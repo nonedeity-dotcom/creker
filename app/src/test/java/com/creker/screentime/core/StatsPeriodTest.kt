@@ -37,14 +37,28 @@ class StatsPeriodTest {
     }
 
     @Test
-    fun `a custom range picked backwards is normalised`() {
-        val range = StatsPeriod.Custom(
-            from = LocalDate.of(2026, 8, 20),
-            to = LocalDate.of(2026, 8, 10),
-        ).resolve(today)
+    fun `yesterday is a single day, one before today`() {
+        val range = StatsPeriod.Yesterday.resolve(today)
 
-        assertEquals(LocalDate.of(2026, 8, 10), range.from)
-        assertEquals(LocalDate.of(2026, 8, 20), range.to)
+        assertEquals(DayRange(today.minusDays(1), today.minusDays(1)), range)
+        assertEquals(1, range.dayCount)
+    }
+
+    @Test
+    fun `a preset selection re-resolves against today`() {
+        val selection: PeriodSelection = PeriodSelection.Preset(StatsPeriod.Day)
+
+        assertEquals(DayRange(today, today), selection.resolve(today))
+        assertEquals(DayRange(today.plusDays(1), today.plusDays(1)), selection.resolve(today.plusDays(1)))
+    }
+
+    @Test
+    fun `a fixed selection ignores today and always returns its own range`() {
+        val fixedRange = DayRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 5))
+        val selection: PeriodSelection = PeriodSelection.Fixed(fixedRange)
+
+        assertEquals(fixedRange, selection.resolve(today))
+        assertEquals(fixedRange, selection.resolve(today.plusDays(30)))
     }
 
     @Test

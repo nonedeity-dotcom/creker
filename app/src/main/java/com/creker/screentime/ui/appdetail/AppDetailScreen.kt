@@ -2,9 +2,7 @@ package com.creker.screentime.ui.appdetail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -19,12 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ChevronLeft
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,8 +40,8 @@ import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.DurationFormatter
 import com.creker.screentime.ui.chart.ChartCard
+import com.creker.screentime.ui.period.PeriodPicker
 import com.creker.screentime.ui.stats.CustomRangeDialog
-import com.creker.screentime.ui.stats.formatted
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -114,8 +107,11 @@ fun AppDetailScreen(
                 canGoForward = state.canGoForward,
                 onPrevious = onPrevious,
                 onNext = onNext,
-                onSelectPreset = onSelectRange,
-                onOpenCustomRange = { rangeDialogVisible = true },
+                onToday = { onSelectRange(DayRange(today, today)) },
+                onYesterday = { onSelectRange(DayRange(today.minusDays(1), today.minusDays(1))) },
+                onLastWeek = { onSelectRange(DayRange(today.minusDays(6), today)) },
+                onLastMonth = { onSelectRange(DayRange(today.minusDays(29), today)) },
+                onCustomRange = { rangeDialogVisible = true },
                 modifier = Modifier.padding(16.dp),
             )
 
@@ -146,85 +142,6 @@ fun AppDetailScreen(
             },
         )
     }
-}
-
-@Composable
-private fun PeriodPicker(
-    range: DayRange,
-    today: LocalDate,
-    canGoForward: Boolean,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onSelectPreset: (DayRange) -> Unit,
-    onOpenCustomRange: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var menuExpanded by remember { mutableStateOf(false) }
-
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onPrevious) {
-            Icon(
-                imageVector = Icons.Rounded.ChevronLeft,
-                contentDescription = stringResource(R.string.app_detail_previous_period),
-            )
-        }
-        Box(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { menuExpanded = true }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.DateRange,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(text = periodLabel(range, today), color = MaterialTheme.colorScheme.primary)
-            }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.app_detail_today)) },
-                    onClick = { menuExpanded = false; onSelectPreset(DayRange(today, today)) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.app_detail_yesterday)) },
-                    onClick = { menuExpanded = false; onSelectPreset(DayRange(today.minusDays(1), today.minusDays(1))) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.period_preset_last_week)) },
-                    onClick = { menuExpanded = false; onSelectPreset(DayRange(today.minusDays(6), today)) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.period_preset_last_month)) },
-                    onClick = { menuExpanded = false; onSelectPreset(DayRange(today.minusDays(29), today)) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.period_preset_custom)) },
-                    onClick = { menuExpanded = false; onOpenCustomRange() },
-                )
-            }
-        }
-        IconButton(onClick = onNext, enabled = canGoForward) {
-            Icon(
-                imageVector = Icons.Rounded.ChevronRight,
-                contentDescription = stringResource(R.string.app_detail_next_period),
-            )
-        }
-    }
-}
-
-@Composable
-private fun periodLabel(range: DayRange, today: LocalDate): String = when (range) {
-    DayRange(today, today) -> stringResource(R.string.app_detail_today)
-    DayRange(today.minusDays(1), today.minusDays(1)) -> stringResource(R.string.app_detail_yesterday)
-    else -> range.formatted()
 }
 
 @Composable

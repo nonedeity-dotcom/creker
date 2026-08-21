@@ -9,12 +9,6 @@
     <string name="permission_recheck">Я включил(а), проверить снова</string>
     <string name="permission_settings_missing">Не удалось открыть системный экран. Откройте Настройки → Приложения → Специальный доступ → Доступ к данным об использовании.</string>
 
-    <!-- Periods -->
-    <string name="period_day">День</string>
-    <string name="period_week">Неделя</string>
-    <string name="period_month">Месяц</string>
-    <string name="period_custom">Свой период</string>
-
     <!-- Stats screen -->
     <string name="total_screen_time">Общее время экрана</string>
     <string name="apps_count">Приложений: %1$d</string>

@@ -9,7 +9,10 @@ import com.creker.screentime.AppContainer
 import com.creker.screentime.core.AppUsageTotal
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
+import com.creker.screentime.core.PeriodSelection
 import com.creker.screentime.core.StatsPeriod
+import com.creker.screentime.core.resolve
+import com.creker.screentime.core.shiftBy
 import com.creker.screentime.data.UsageRepository
 import com.creker.screentime.data.system.AppInfoProvider
 import com.creker.screentime.ui.chart.ChartPoint
@@ -27,6 +30,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -35,18 +39,17 @@ class StatsViewModel(
     private val appInfoProvider: AppInfoProvider,
 ) : ViewModel() {
 
-    private val period = MutableStateFlow<StatsPeriod>(StatsPeriod.Day)
+    private val selection = MutableStateFlow<PeriodSelection>(PeriodSelection.Preset(StatsPeriod.Day))
     private val metric = MutableStateFlow(ChartMetric.USAGE)
     private val refreshing = MutableStateFlow(false)
 
     /**
-     * Bumped after every sync. "Today" is relative to the wall clock, so the day range
-     * has to be resolved again rather than reused from when the period was picked.
+     * Bumped after every sync. A preset selection is relative to the wall clock, so it
+     * has to be re-resolved rather than reused from when it was picked.
      */
     private val resolveTicket = MutableStateFlow(0)
 
     private data class ScreenData(
-        val period: StatsPeriod,
         val metric: ChartMetric,
         val range: DayRange,
         val rows: List<AppUsageTotal>,
@@ -55,11 +58,11 @@ class StatsViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val screenData: Flow<ScreenData> =
-        combine(period, metric, resolveTicket) { selectedPeriod, selectedMetric, _ -> selectedPeriod to selectedMetric }
-            .flatMapLatest { (selectedPeriod, selectedMetric) ->
-                val range = selectedPeriod.resolve(repository.today())
+        combine(selection, metric, resolveTicket) { selectedSelection, selectedMetric, _ -> selectedSelection to selectedMetric }
+            .flatMapLatest { (selectedSelection, selectedMetric) ->
+                val range = selectedSelection.resolve(repository.today())
                 combine(repository.observeTotals(range), chartPointsFlow(range, selectedMetric)) { rows, points ->
-                    ScreenData(selectedPeriod, selectedMetric, range, rows, points)
+                    ScreenData(selectedMetric, range, rows, points)
                 }
             }
 
@@ -96,10 +99,11 @@ class StatsViewModel(
 
     val uiState: StateFlow<StatsUiState> =
         combine(screenData, repository.observeEarliestDay(), refreshing) { data, earliest, isRefreshing ->
+            val today = repository.today()
             StatsUiState(
-                period = data.period,
                 metric = data.metric,
                 range = data.range,
+                canGoForward = !data.range.shiftBy(data.range.dayCount).to.isAfter(today),
                 totalMillis = data.rows.sumOf { it.usageMillis },
                 apps = data.rows.toUiRows(),
                 chartPoints = data.chartPoints,
@@ -117,11 +121,25 @@ class StatsViewModel(
             )
 
     fun selectPeriod(newPeriod: StatsPeriod) {
-        period.value = newPeriod
+        selection.value = PeriodSelection.Preset(newPeriod)
     }
 
     fun selectCustomRange(from: LocalDate, to: LocalDate) {
-        period.value = StatsPeriod.Custom(from, to)
+        selection.value = PeriodSelection.Fixed(if (from.isAfter(to)) DayRange(to, from) else DayRange(from, to))
+    }
+
+    fun goToPreviousPeriod() {
+        val current = selection.value.resolve(repository.today())
+        selection.value = PeriodSelection.Fixed(current.shiftBy(-current.dayCount))
+    }
+
+    fun goToNextPeriod() {
+        val today = repository.today()
+        val current = selection.value.resolve(today)
+        val next = current.shiftBy(current.dayCount)
+        if (!next.to.isAfter(today)) {
+            selection.value = PeriodSelection.Fixed(next)
+        }
     }
 
     fun selectMetric(newMetric: ChartMetric) {
@@ -135,7 +153,7 @@ class StatsViewModel(
             refreshing.value = true
             try {
                 repository.sync()
-                resolveTicket.value += 1
+                resolveTicket.update { it + 1 }
             } finally {
                 refreshing.value = false
             }

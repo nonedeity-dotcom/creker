@@ -8,11 +8,6 @@
     <string name="permission_recheck">I enabled it, check again</string>
     <string name="permission_settings_missing">Could not open the system screen. Go to Settings → Apps → Special access → Usage access.</string>
 
-    <string name="period_day">Day</string>
-    <string name="period_week">Week</string>
-    <string name="period_month">Month</string>
-    <string name="period_custom">Custom</string>
-
     <string name="total_screen_time">Total screen time</string>
     <string name="apps_count">Apps: %1$d</string>
     <string name="sorted_by_usage">Sorted from most to least used</string>

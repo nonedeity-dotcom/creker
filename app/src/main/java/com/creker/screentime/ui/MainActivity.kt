@@ -140,6 +140,8 @@ private fun ScreenTimeApp(container: AppContainer) {
             today = LocalDate.now(),
             onSelectPeriod = statsViewModel::selectPeriod,
             onSelectCustomRange = statsViewModel::selectCustomRange,
+            onPrevious = statsViewModel::goToPreviousPeriod,
+            onNext = statsViewModel::goToNextPeriod,
             onRefresh = statsViewModel::refresh,
             onAppClick = { selectedPackage = it },
             onSelectMetric = statsViewModel::selectMetric,

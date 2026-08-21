@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.StatsPeriod
+import com.creker.screentime.ui.period.PeriodPicker
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -46,6 +47,8 @@ fun StatsScreen(
     today: LocalDate,
     onSelectPeriod: (StatsPeriod) -> Unit,
     onSelectCustomRange: (LocalDate, LocalDate) -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
     onRefresh: () -> Unit,
     onAppClick: (String) -> Unit,
     onSelectMetric: (ChartMetric) -> Unit,
@@ -85,11 +88,18 @@ fun StatsScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            PeriodSelector(
-                selected = state.period,
-                onSelect = onSelectPeriod,
-                onPickCustomRange = { rangeDialogVisible = true },
-                modifier = Modifier.padding(top = 8.dp),
+            PeriodPicker(
+                range = state.range,
+                today = today,
+                canGoForward = state.canGoForward,
+                onPrevious = onPrevious,
+                onNext = onNext,
+                onToday = { onSelectPeriod(StatsPeriod.Day) },
+                onYesterday = { onSelectPeriod(StatsPeriod.Yesterday) },
+                onLastWeek = { onSelectPeriod(StatsPeriod.Week) },
+                onLastMonth = { onSelectPeriod(StatsPeriod.Month) },
+                onCustomRange = { rangeDialogVisible = true },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
 
             UsageOverviewCard(

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.BarChart
@@ -64,10 +65,10 @@ import kotlinx.coroutines.launch
 
 enum class ChartMode { Bar, Line }
 
-private const val DENSE_LABEL_THRESHOLD = 8
 private const val GRID_LINE_COUNT = 3
 private const val MAX_ZOOM = 4f
 private val TOOLTIP_WIDTH = 132.dp
+private val BASE_CHART_HEIGHT = 150.dp
 
 /** Bar / line switch, shown next to a chart's headline. */
 @Composable
@@ -123,9 +124,11 @@ private fun MetricChip(metric: ChartMetric, icon: ImageVector, selected: ChartMe
 }
 
 /**
- * A bar or filled-line chart with pinch-to-zoom and horizontal panning, plus, per the
- * mode: bar mode always labels every bar's value; line mode reveals a value on tap
- * instead, since a label per point would be unreadable on a smooth curve.
+ * A bar or filled-line chart, pinch-zoomable and pannable in both directions — wider
+ * to spread out crowded points (a day's 24 hours), taller to make close bar heights
+ * easier to tell apart. Per the mode: bar mode always labels every bar's value; line
+ * mode reveals a value on tap instead, since a label per point would be unreadable on
+ * a smooth curve.
  */
 @Composable
 fun UsageChart(
@@ -136,11 +139,15 @@ fun UsageChart(
 ) {
     var zoom by remember(points.size) { mutableFloatStateOf(1f) }
     var tappedIndex by remember(points.size, mode) { mutableStateOf<Int?>(null) }
-    val scrollState = rememberScrollState()
+    val horizontalScrollState = rememberScrollState()
+    val verticalScrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
         zoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
-        scope.launch { scrollState.scrollBy(-panChange.x) }
+        scope.launch {
+            horizontalScrollState.scrollBy(-panChange.x)
+            verticalScrollState.scrollBy(-panChange.y)
+        }
     }
 
     val barColor = MaterialTheme.colorScheme.primary
@@ -150,12 +157,17 @@ fun UsageChart(
 
     BoxWithConstraints(modifier = modifier.transformable(transformState)) {
         val contentWidth = maxWidth * zoom
-        Box(modifier = Modifier.horizontalScroll(scrollState, enabled = false)) {
+        val chartHeight = BASE_CHART_HEIGHT * zoom
+        Box(
+            modifier = Modifier
+                .horizontalScroll(horizontalScrollState, enabled = false)
+                .verticalScroll(verticalScrollState, enabled = false),
+        ) {
             Column(Modifier.width(contentWidth)) {
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp)
+                        .height(chartHeight)
                         .pointerInput(points, mode) {
                             if (mode != ChartMode.Line) return@pointerInput
                             detectTapGestures { offset ->
@@ -195,6 +207,8 @@ private fun DrawScope.drawBars(points: List<ChartPoint>, maxValue: Long, color: 
     if (points.isEmpty()) return
     val slotWidth = size.width / points.size
     val barWidth = (slotWidth * 0.55f).coerceAtLeast(2.dp.toPx())
+    // Square-cornered bars — a small radius just to soften the top edge, not a pill shape.
+    val corner = CornerRadius(2.dp.toPx(), 2.dp.toPx())
     points.forEachIndexed { index, point ->
         val barHeight = (size.height * point.value.toFloat() / maxValue).coerceAtLeast(2.dp.toPx())
         val left = slotWidth * index + (slotWidth - barWidth) / 2f
@@ -202,7 +216,7 @@ private fun DrawScope.drawBars(points: List<ChartPoint>, maxValue: Long, color: 
             color = color,
             topLeft = Offset(left, size.height - barHeight),
             size = Size(barWidth, barHeight),
-            cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f),
+            cornerRadius = corner,
         )
     }
 }
@@ -252,24 +266,20 @@ private fun BarValueLabels(points: List<ChartPoint>, formatValue: (Long) -> Stri
     }
 }
 
+/** One label per point, always — zooming in gives each one the room it needs. */
 @Composable
 private fun ChartAxisLabels(points: List<ChartPoint>) {
-    val style = MaterialTheme.typography.labelSmall
-    val color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-
     if (points.isEmpty()) return
-
-    if (points.size <= DENSE_LABEL_THRESHOLD) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            points.forEach { point ->
-                Text(text = point.label, style = style, color = color, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
-            }
-        }
-    } else {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(text = points.first().label, style = style, color = color)
-            Text(text = points[points.size / 2].label, style = style, color = color)
-            Text(text = points.last().label, style = style, color = color)
+    Row(modifier = Modifier.fillMaxWidth()) {
+        points.forEach { point ->
+            Text(
+                text = point.label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
