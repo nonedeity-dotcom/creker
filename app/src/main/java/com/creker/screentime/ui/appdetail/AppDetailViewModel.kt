@@ -6,21 +6,30 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.creker.screentime.AppContainer
+import com.creker.screentime.core.AppPeriodTotal
+import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.UsageStreaks
 import com.creker.screentime.core.shiftBy
 import com.creker.screentime.data.UsageRepository
 import com.creker.screentime.data.system.AppInfoProvider
+import com.creker.screentime.ui.chart.ChartPoint
+import com.creker.screentime.ui.chart.toDailyChartPoints
+import com.creker.screentime.ui.chart.toHourlyChartPoints
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import java.time.LocalDate
 
 /**
  * One app's detail screen: usage and launches over a steppable date window, plus
@@ -34,12 +43,57 @@ class AppDetailViewModel(
 ) : ViewModel() {
 
     private val range = MutableStateFlow(initialRange)
+    private val metric = MutableStateFlow(ChartMetric.USAGE)
+
+    private data class ScreenData(
+        val range: DayRange,
+        val metric: ChartMetric,
+        val total: AppPeriodTotal,
+        val chartPoints: List<ChartPoint>,
+    )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val periodTotal = range.flatMapLatest { r -> repository.observeAppPeriodTotal(packageName, r) }
+    private val screenData: Flow<ScreenData> =
+        combine(range, metric) { r, m -> r to m }
+            .flatMapLatest { (currentRange, currentMetric) ->
+                combine(
+                    repository.observeAppPeriodTotal(packageName, currentRange),
+                    chartPointsFlow(currentRange, currentMetric),
+                ) { total, points -> ScreenData(currentRange, currentMetric, total, points) }
+            }
+
+    /**
+     * Usage and sessions are this one app's own numbers; screen time is device-wide
+     * and shared verbatim with the overview screen, since it is not tied to any
+     * particular app. As on the overview chart, the hourly (today-only) case is used
+     * only for the current day — Room does not store hourly history.
+     */
+    private fun chartPointsFlow(range: DayRange, metric: ChartMetric): Flow<List<ChartPoint>> {
+        val isToday = range.dayCount == 1 && range.from == repository.today()
+        val useWeekdayLabels = range.dayCount <= 8
+        return when (metric) {
+            ChartMetric.USAGE -> if (isToday) {
+                flow { emit(repository.hourlyBreakdownForApp(range.from, packageName).toHourlyChartPoints()) }
+            } else {
+                repository.observeAppDailyUsage(packageName, range).map { it.toDailyChartPoints(useWeekdayLabels) }
+            }
+
+            ChartMetric.SESSIONS -> if (isToday) {
+                flow { emit(repository.hourlySessionsForApp(range.from, packageName).toHourlyChartPoints()) }
+            } else {
+                repository.observeAppDailySessions(packageName, range).map { it.toDailyChartPoints(useWeekdayLabels) }
+            }
+
+            ChartMetric.SCREEN_TIME -> if (isToday) {
+                flow { emit(repository.hourlyScreenTime(range.from).toHourlyChartPoints()) }
+            } else {
+                repository.observeDeviceDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }
+            }
+        }
+    }
 
     val uiState: StateFlow<AppDetailUiState> =
-        combine(range, periodTotal, repository.observeAppHistory(packageName)) { currentRange, total, history ->
+        combine(screenData, repository.observeAppHistory(packageName)) { data, history ->
             val today = repository.today()
             val info = appInfoProvider.get(packageName)
             AppDetailUiState(
@@ -47,14 +101,16 @@ class AppDetailViewModel(
                 label = info.label,
                 icon = info.icon,
                 installedAtMs = info.installedAtMs,
-                range = currentRange,
-                canGoForward = !currentRange.shiftBy(currentRange.dayCount).to.isAfter(today),
-                usageMillis = total.usageMillis,
-                launchCount = total.launchCount,
-                averagePerDayMillis = total.usageMillis / currentRange.dayCount,
+                range = data.range,
+                canGoForward = !data.range.shiftBy(data.range.dayCount).to.isAfter(today),
+                usageMillis = data.total.usageMillis,
+                launchCount = data.total.launchCount,
+                averagePerDayMillis = data.total.usageMillis / data.range.dayCount,
                 currentStreakDays = UsageStreaks.currentStreak(history, today),
                 longestStreakDays = UsageStreaks.longestStreak(history),
                 maxDayMillis = UsageStreaks.maxDayUsage(history),
+                metric = data.metric,
+                chartPoints = data.chartPoints,
                 isLoading = false,
             )
         }
@@ -75,6 +131,15 @@ class AppDetailViewModel(
             val next = current.shiftBy(current.dayCount)
             if (next.to.isAfter(repository.today())) current else next
         }
+    }
+
+    /** Jumps straight to a specific window — used by the period picker's presets and custom range. */
+    fun selectRange(newRange: DayRange) {
+        range.value = newRange
+    }
+
+    fun selectMetric(newMetric: ChartMetric) {
+        metric.value = newMetric
     }
 
     companion object {

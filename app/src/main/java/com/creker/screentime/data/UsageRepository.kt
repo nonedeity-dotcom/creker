@@ -6,7 +6,11 @@ import com.creker.screentime.core.DailyTotal
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.ForegroundSessionBuilder
 import com.creker.screentime.core.HourlyUsage
+import com.creker.screentime.core.UsageExportRow
 import com.creker.screentime.data.local.AppUsageEntity
+import com.creker.screentime.data.local.DateTotalRow
+import com.creker.screentime.data.local.DeviceUsageDao
+import com.creker.screentime.data.local.DeviceUsageEntity
 import com.creker.screentime.data.local.SyncStateDao
 import com.creker.screentime.data.local.SyncStateEntity
 import com.creker.screentime.data.local.UsageDao
@@ -30,6 +34,7 @@ import java.util.concurrent.TimeUnit
  */
 class UsageRepository(
     private val usageDao: UsageDao,
+    private val deviceUsageDao: DeviceUsageDao,
     private val syncStateDao: SyncStateDao,
     private val eventSource: SystemUsageEventSource,
     private val clock: Clock = Clock.systemDefaultZone(),
@@ -46,34 +51,72 @@ class UsageRepository(
     fun observeEarliestDay(): Flow<LocalDate?> =
         usageDao.observeEarliestDate().map { date -> date?.let(LocalDate::parse) }
 
-    /**
-     * Per-day totals for the multi-day chart (week / month / a longer custom range).
-     * Days with no stored usage are zero-filled so the chart never silently skips one.
-     */
+    /** Every app's usage summed across the period, for the overview chart in usage mode. */
     fun observeDailyTotals(range: DayRange): Flow<List<DailyTotal>> =
-        usageDao.observeDailyTotals(range.from.toString(), range.to.toString()).map { rows ->
-            val byDate = rows.associate { LocalDate.parse(it.date) to it.usageMillis }
-            (0 until range.dayCount).map { offset ->
-                val day = range.from.plusDays(offset.toLong())
-                DailyTotal(day, byDate[day] ?: 0L)
-            }
-        }
+        usageDao.observeDailyTotals(range.from.toString(), range.to.toString()).zeroFilled(range)
+
+    /** Every app's launches summed across the period, for the overview chart in sessions mode. */
+    fun observeSessionDailyTotals(range: DayRange): Flow<List<DailyTotal>> =
+        usageDao.observeSessionDailyTotals(range.from.toString(), range.to.toString()).zeroFilled(range)
+
+    /** Device-wide screen-on time, for the overview or app-detail chart in screen-time mode. */
+    fun observeDeviceDailyTotals(range: DayRange): Flow<List<DailyTotal>> =
+        deviceUsageDao.observeDailyTotals(range.from.toString(), range.to.toString()).zeroFilled(range)
+
+    /** One package's own per-day usage, for its detail chart in usage mode. */
+    fun observeAppDailyUsage(packageName: String, range: DayRange): Flow<List<DailyTotal>> =
+        usageDao.observeAppDailyUsage(packageName, range.from.toString(), range.to.toString()).zeroFilled(range)
+
+    /** One package's own per-day session count, for its detail chart in sessions mode. */
+    fun observeAppDailySessions(packageName: String, range: DayRange): Flow<List<DailyTotal>> =
+        usageDao.observeAppDailySessions(packageName, range.from.toString(), range.to.toString()).zeroFilled(range)
 
     /**
-     * Hour-by-hour breakdown of [day]'s foreground time, for the single-day chart.
-     * Room only stores daily totals, so — unlike [observeDailyTotals] — this reads
-     * straight from the system every time; that is fine since it is only ever called
-     * for today, which is already read fresh on every [sync].
+     * Hour-by-hour breakdown of [day]'s foreground time across every app, for the
+     * overview chart's single-day usage view. Room only stores daily totals, so —
+     * unlike the observe* methods above — this reads straight from the system every
+     * time; that is fine since it is only ever called for today, which is already
+     * read fresh on every [sync].
      */
     suspend fun hourlyBreakdown(day: LocalDate): List<HourlyUsage> = withContext(ioDispatcher) {
-        val zone = clock.zone
-        val startMs = day.atStartOfDay(zone).toInstant().toEpochMilli()
-        val endMs = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-            .coerceAtMost(clock.millis())
-            .coerceAtLeast(startMs)
-
+        val (zone, startMs, endMs) = dayWindow(day)
         val events = eventSource.queryEvents(startMs - SESSION_LOOKBACK_MS, endMs)
         val intervals = ForegroundSessionBuilder.buildIntervals(events, startMs, endMs, endMs)
+        ForegroundSessionBuilder.toHourlyUsage(intervals, zone)
+    }
+
+    /** Same as [hourlyBreakdown] but restricted to one package, for its detail chart. */
+    suspend fun hourlyBreakdownForApp(day: LocalDate, packageName: String): List<HourlyUsage> = withContext(ioDispatcher) {
+        val (zone, startMs, endMs) = dayWindow(day)
+        val events = eventSource.queryEvents(startMs - SESSION_LOOKBACK_MS, endMs)
+        val intervals = ForegroundSessionBuilder.buildIntervals(events, startMs, endMs, endMs)
+            .filter { it.packageName == packageName }
+        ForegroundSessionBuilder.toHourlyUsage(intervals, zone)
+    }
+
+    /** Hour-by-hour launch counts across every app, for the overview chart's sessions view. */
+    suspend fun hourlySessions(day: LocalDate): List<HourlyUsage> = withContext(ioDispatcher) {
+        val (zone, startMs, endMs) = dayWindow(day)
+        val events = eventSource.queryEvents(startMs, endMs)
+        ForegroundSessionBuilder.toHourlyLaunches(events, startMs, endMs, zone)
+    }
+
+    /** Same as [hourlySessions] but restricted to one package, for its detail chart. */
+    suspend fun hourlySessionsForApp(day: LocalDate, packageName: String): List<HourlyUsage> = withContext(ioDispatcher) {
+        val (zone, startMs, endMs) = dayWindow(day)
+        val events = eventSource.queryEvents(startMs, endMs).filter { it.packageName == packageName }
+        ForegroundSessionBuilder.toHourlyLaunches(events, startMs, endMs, zone)
+    }
+
+    /**
+     * Device-wide screen-on time by hour, excluding the lock screen — shared by both
+     * the overview chart and every app-detail chart's screen-time view, since it is
+     * not tied to any one package.
+     */
+    suspend fun hourlyScreenTime(day: LocalDate): List<HourlyUsage> = withContext(ioDispatcher) {
+        val (zone, startMs, endMs) = dayWindow(day)
+        val events = eventSource.queryEvents(startMs - SESSION_LOOKBACK_MS, endMs)
+        val intervals = ForegroundSessionBuilder.buildScreenOnIntervals(events, startMs, endMs, endMs)
         ForegroundSessionBuilder.toHourlyUsage(intervals, zone)
     }
 
@@ -91,6 +134,17 @@ class UsageRepository(
     fun observeAppPeriodTotal(packageName: String, range: DayRange): Flow<AppPeriodTotal> =
         usageDao.observeAppPeriodTotal(packageName, range.from.toString(), range.to.toString())
             .map { row -> AppPeriodTotal(usageMillis = row.usageMillis ?: 0L, launchCount = row.launchCount ?: 0) }
+
+    /** Every stored row, flattened for the "save all data" export. */
+    suspend fun exportRows(): List<UsageExportRow> = withContext(ioDispatcher) {
+        val appRows = usageDao.getAllRows().map {
+            UsageExportRow(kind = "app", packageName = it.packageName, date = it.date, valueMillis = it.usageMillis, launchCount = it.launchCount)
+        }
+        val deviceRows = deviceUsageDao.getAllRows().map {
+            UsageExportRow(kind = "screen", packageName = "", date = it.date, valueMillis = it.screenMillis, launchCount = 0)
+        }
+        (appRows + deviceRows).sortedBy { it.date }
+    }
 
     /**
      * Pulls everything the system still remembers into the local database.
@@ -143,6 +197,18 @@ class UsageRepository(
 
         usageDao.replaceDays(firstDay.toString(), today.toString(), rows)
         usageDao.deleteBefore(today.minusDays(HISTORY_RETENTION_DAYS).toString())
+
+        val screenOnIntervals = ForegroundSessionBuilder.buildScreenOnIntervals(
+            events = events,
+            rangeStartMs = windowStartMs,
+            rangeEndMs = nowMs,
+            nowMs = nowMs,
+        )
+        val screenRows = ForegroundSessionBuilder.toDailyUsage(screenOnIntervals, zone)
+            .map { usage -> DeviceUsageEntity(date = usage.day.toString(), screenMillis = usage.usageMillis) }
+        deviceUsageDao.replaceDays(firstDay.toString(), today.toString(), screenRows)
+        deviceUsageDao.deleteBefore(today.minusDays(HISTORY_RETENTION_DAYS).toString())
+
         syncStateDao.put(SyncStateEntity(lastSyncedAtMs = nowMs))
 
         SyncResult(
@@ -159,6 +225,25 @@ class UsageRepository(
         val daysWritten: Int,
         val eventCount: Int,
     )
+
+    /** [zone], the start of [day] in it, and the end — clamped to now if `day` is today. */
+    private fun dayWindow(day: LocalDate): Triple<java.time.ZoneId, Long, Long> {
+        val zone = clock.zone
+        val startMs = day.atStartOfDay(zone).toInstant().toEpochMilli()
+        val endMs = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            .coerceAtMost(clock.millis())
+            .coerceAtLeast(startMs)
+        return Triple(zone, startMs, endMs)
+    }
+
+    /** Zero-fills any day in [range] without a matching row, so a chart never silently skips one. */
+    private fun Flow<List<DateTotalRow>>.zeroFilled(range: DayRange): Flow<List<DailyTotal>> = map { rows ->
+        val byDate = rows.associate { LocalDate.parse(it.date) to it.usageMillis }
+        (0 until range.dayCount).map { offset ->
+            val day = range.from.plusDays(offset.toLong())
+            DailyTotal(day, byDate[day] ?: 0L)
+        }
+    }
 
     private companion object {
         /**

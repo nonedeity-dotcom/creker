@@ -53,8 +53,11 @@ object ForegroundSessionBuilder {
                 }
 
                 RawUsageEventType.SCREEN_OFF,
+                RawUsageEventType.KEYGUARD_SHOWN,
                 RawUsageEventType.SHUTDOWN,
                 -> close(event.timestampMs)
+
+                RawUsageEventType.SCREEN_ON, RawUsageEventType.KEYGUARD_HIDDEN -> Unit
             }
         }
         close(minOf(rangeEndMs, nowMs))
@@ -133,6 +136,98 @@ object ForegroundSessionBuilder {
         return totals.mapIndexed { hour, millis -> HourlyUsage(hour, millis) }
     }
 
+    /** Foreground entries per hour of a single day — the session/launch count for the chart. */
+    fun toHourlyLaunches(events: List<RawUsageEvent>, rangeStartMs: Long, rangeEndMs: Long, zone: ZoneId): List<HourlyUsage> {
+        val counts = LongArray(24)
+        for (event in events) {
+            if (event.type != RawUsageEventType.FOREGROUND) continue
+            if (event.timestampMs < rangeStartMs || event.timestampMs >= rangeEndMs) continue
+            counts[event.timestampMs.toLocalDateTime(zone).hour] += 1L
+        }
+        return counts.mapIndexed { hour, count -> HourlyUsage(hour, count) }
+    }
+
+    /**
+     * Device-wide screen-on time, excluding whatever portion the lock screen itself
+     * was showing. Built from two independent event pairs — SCREEN_ON/SCREEN_OFF and
+     * KEYGUARD_SHOWN/KEYGUARD_HIDDEN — rather than one, because a screen can turn on
+     * without ever showing a keyguard at all (no lock method set), in which case
+     * there is nothing to subtract.
+     */
+    fun buildScreenOnIntervals(
+        events: List<RawUsageEvent>,
+        rangeStartMs: Long,
+        rangeEndMs: Long,
+        nowMs: Long,
+    ): List<UsageInterval> {
+        val screenOn = buildSingleStreamIntervals(
+            events, RawUsageEventType.SCREEN_ON, RawUsageEventType.SCREEN_OFF, rangeStartMs, rangeEndMs, nowMs,
+        )
+        val keyguardShown = buildSingleStreamIntervals(
+            events, RawUsageEventType.KEYGUARD_SHOWN, RawUsageEventType.KEYGUARD_HIDDEN, rangeStartMs, rangeEndMs, nowMs,
+        )
+        return subtractIntervals(screenOn, keyguardShown)
+    }
+
+    /**
+     * Pairs a generic "opens" event type with a "closes" one into intervals. Unlike
+     * [buildIntervals], this is for a single unkeyed stream — only one of it can be
+     * open at a time, which is true of both screen-on and keyguard-shown.
+     */
+    private fun buildSingleStreamIntervals(
+        events: List<RawUsageEvent>,
+        opensOn: RawUsageEventType,
+        closesOn: RawUsageEventType,
+        rangeStartMs: Long,
+        rangeEndMs: Long,
+        nowMs: Long,
+    ): List<UsageInterval> {
+        val intervals = mutableListOf<UsageInterval>()
+        var openStartMs: Long? = null
+        for (event in events.sortedBy { it.timestampMs }) {
+            when (event.type) {
+                opensOn -> if (openStartMs == null) openStartMs = event.timestampMs
+                closesOn -> {
+                    val start = openStartMs ?: continue
+                    if (event.timestampMs > start) intervals += UsageInterval(SINGLE_STREAM_LABEL, start, event.timestampMs)
+                    openStartMs = null
+                }
+                else -> Unit
+            }
+        }
+        openStartMs?.let { start ->
+            val end = minOf(rangeEndMs, nowMs)
+            if (end > start) intervals += UsageInterval(SINGLE_STREAM_LABEL, start, end)
+        }
+        return intervals.mapNotNull { it.clipTo(rangeStartMs, rangeEndMs) }
+    }
+
+    /** Removes every part of [subtrahends] from [base], keeping each remaining piece's own bounds. */
+    private fun subtractIntervals(base: List<UsageInterval>, subtrahends: List<UsageInterval>): List<UsageInterval> {
+        if (subtrahends.isEmpty()) return base
+        val sorted = subtrahends.sortedBy { it.startMs }
+        return base.flatMap { interval -> subtractFrom(interval, sorted) }
+    }
+
+    private fun subtractFrom(interval: UsageInterval, subtrahends: List<UsageInterval>): List<UsageInterval> {
+        var remaining = listOf(interval)
+        for (cut in subtrahends) {
+            remaining = remaining.flatMap { piece ->
+                val overlapStart = maxOf(piece.startMs, cut.startMs)
+                val overlapEnd = minOf(piece.endMs, cut.endMs)
+                if (overlapStart >= overlapEnd) {
+                    listOf(piece)
+                } else {
+                    listOfNotNull(
+                        piece.takeIf { piece.startMs < overlapStart }?.copy(endMs = overlapStart),
+                        piece.takeIf { piece.endMs > overlapEnd }?.copy(startMs = overlapEnd),
+                    )
+                }
+            }
+        }
+        return remaining
+    }
+
     private fun UsageInterval.clipTo(startMs: Long, endMs: Long): UsageInterval? {
         val clippedStart = maxOf(this.startMs, startMs)
         val clippedEnd = minOf(this.endMs, endMs)
@@ -141,4 +236,8 @@ object ForegroundSessionBuilder {
 
     private fun Long.toLocalDate(zone: ZoneId): LocalDate =
         Instant.ofEpochMilli(this).atZone(zone).toLocalDate()
+
+    private fun Long.toLocalDateTime(zone: ZoneId) = Instant.ofEpochMilli(this).atZone(zone)
+
+    private const val SINGLE_STREAM_LABEL = "__device__"
 }

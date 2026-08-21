@@ -77,6 +77,23 @@ class ForegroundSessionBuilderTest {
     }
 
     @Test
+    fun `the lock screen appearing ends a session too`() {
+        val events = listOf(
+            event("com.reader", "2026-08-20T10:00:00", RawUsageEventType.FOREGROUND),
+            event("android", "2026-08-20T10:02:00", RawUsageEventType.KEYGUARD_SHOWN),
+        )
+
+        val intervals = ForegroundSessionBuilder.buildIntervals(
+            events = events,
+            rangeStartMs = at("2026-08-20T00:00:00"),
+            rangeEndMs = at("2026-08-21T00:00:00"),
+            nowMs = at("2026-08-20T23:00:00"),
+        )
+
+        assertEquals(TimeUnit.MINUTES.toMillis(2), intervals.single().durationMs)
+    }
+
+    @Test
     fun `an unfinished session ends at the current moment, not at the window end`() {
         val events = listOf(
             event("com.game", "2026-08-20T22:50:00", RawUsageEventType.FOREGROUND),

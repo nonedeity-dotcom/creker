@@ -2,10 +2,12 @@ package com.creker.screentime.ui.appdetail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +23,8 @@ import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,21 +33,28 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
+import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.DurationFormatter
+import com.creker.screentime.ui.chart.ChartCard
+import com.creker.screentime.ui.stats.CustomRangeDialog
 import com.creker.screentime.ui.stats.formatted
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** One app's stats: usage, sessions, streaks and peak day, in a tile grid. */
+/** One app's stats: usage, sessions, streaks and peak day, plus its own usage chart. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppDetailScreen(
@@ -52,8 +63,12 @@ fun AppDetailScreen(
     onBack: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onSelectRange: (DayRange) -> Unit,
+    onSelectMetric: (ChartMetric) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var rangeDialogVisible by remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -93,34 +108,59 @@ fun AppDetailScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
         ) {
-            PeriodStepper(
+            PeriodPicker(
                 range = state.range,
                 today = today,
                 canGoForward = state.canGoForward,
                 onPrevious = onPrevious,
                 onNext = onNext,
+                onSelectPreset = onSelectRange,
+                onOpenCustomRange = { rangeDialogVisible = true },
                 modifier = Modifier.padding(16.dp),
             )
 
             if (state.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.padding(32.dp))
             } else {
+                ChartCard(
+                    metric = state.metric,
+                    onMetricChange = onSelectMetric,
+                    chartPoints = state.chartPoints,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                Spacer(modifier = Modifier.size(16.dp))
                 StatGrid(state)
                 Spacer(modifier = Modifier.size(16.dp))
             }
         }
     }
+
+    if (rangeDialogVisible) {
+        CustomRangeDialog(
+            initialRange = state.range,
+            today = today,
+            onDismiss = { rangeDialogVisible = false },
+            onConfirm = { from, to ->
+                rangeDialogVisible = false
+                onSelectRange(if (from.isAfter(to)) DayRange(to, from) else DayRange(from, to))
+            },
+        )
+    }
 }
 
 @Composable
-private fun PeriodStepper(
+private fun PeriodPicker(
     range: DayRange,
     today: LocalDate,
     canGoForward: Boolean,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onSelectPreset: (DayRange) -> Unit,
+    onOpenCustomRange: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onPrevious) {
             Icon(
@@ -128,23 +168,48 @@ private fun PeriodStepper(
                 contentDescription = stringResource(R.string.app_detail_previous_period),
             )
         }
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.DateRange,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(modifier = Modifier.size(8.dp))
-            Text(text = periodLabel(range, today), color = MaterialTheme.colorScheme.primary)
+        Box(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { menuExpanded = true }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.DateRange,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(text = periodLabel(range, today), color = MaterialTheme.colorScheme.primary)
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.app_detail_today)) },
+                    onClick = { menuExpanded = false; onSelectPreset(DayRange(today, today)) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.app_detail_yesterday)) },
+                    onClick = { menuExpanded = false; onSelectPreset(DayRange(today.minusDays(1), today.minusDays(1))) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.period_preset_last_week)) },
+                    onClick = { menuExpanded = false; onSelectPreset(DayRange(today.minusDays(6), today)) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.period_preset_last_month)) },
+                    onClick = { menuExpanded = false; onSelectPreset(DayRange(today.minusDays(29), today)) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.period_preset_custom)) },
+                    onClick = { menuExpanded = false; onOpenCustomRange() },
+                )
+            }
         }
         IconButton(onClick = onNext, enabled = canGoForward) {
             Icon(

@@ -42,4 +42,16 @@
     <string name="app_detail_max_day_label">Highest single-day usage</string>
     <string name="app_detail_install_date_label">Install date</string>
     <string name="app_detail_days_format">%1$d d</string>
+
+    <string name="metric_usage">Usage</string>
+    <string name="metric_sessions">Sessions</string>
+    <string name="metric_screen_time">Screen time</string>
+    <string name="total_sessions_label">Total sessions</string>
+    <string name="total_device_screen_time_label">Screen time</string>
+
+    <string name="period_preset_last_week">Last week</string>
+    <string name="period_preset_last_month">Last month</string>
+    <string name="period_preset_custom">Custom range</string>
+
+    <string name="export_action">Save data</string>
 </resources>

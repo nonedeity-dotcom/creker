@@ -10,7 +10,7 @@ object UsageStreaks {
 
     /** Consecutive used days counting back from [today]; 0 if today itself is unused. */
     fun currentStreak(history: List<DailyTotal>, today: LocalDate): Int {
-        val usedDays = history.filter { it.usageMillis > 0L }.mapTo(HashSet()) { it.day }
+        val usedDays = history.filter { it.value > 0L }.mapTo(HashSet()) { it.day }
         var streak = 0
         var day = today
         while (day in usedDays) {
@@ -22,7 +22,7 @@ object UsageStreaks {
 
     /** The longest run of consecutive used days anywhere in the history. */
     fun longestStreak(history: List<DailyTotal>): Int {
-        val usedDays = history.filter { it.usageMillis > 0L }.map { it.day }.sorted()
+        val usedDays = history.filter { it.value > 0L }.map { it.day }.sorted()
         if (usedDays.isEmpty()) return 0
 
         var longest = 1
@@ -35,5 +35,5 @@ object UsageStreaks {
     }
 
     /** The single highest usage recorded on any one day. */
-    fun maxDayUsage(history: List<DailyTotal>): Long = history.maxOfOrNull { it.usageMillis } ?: 0L
+    fun maxDayUsage(history: List<DailyTotal>): Long = history.maxOfOrNull { it.value } ?: 0L
 }

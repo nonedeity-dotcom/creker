@@ -21,6 +21,16 @@ data class AppUsageEntity(
     @ColumnInfo(name = "launch_count") val launchCount: Int,
 )
 
+/**
+ * Device-wide screen-on time for one calendar day, excluding whatever portion the
+ * lock screen itself was showing. Not tied to any package.
+ */
+@Entity(tableName = "device_usage", primaryKeys = ["date"])
+data class DeviceUsageEntity(
+    @ColumnInfo(name = "date") val date: String,
+    @ColumnInfo(name = "screen_millis") val screenMillis: Long,
+)
+
 /** Single-row table remembering how far the event stream has been consumed. */
 @Entity(tableName = "sync_state")
 data class SyncStateEntity(

@@ -3,8 +3,10 @@ package com.creker.screentime.ui
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,6 +15,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -23,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creker.screentime.AppContainer
 import com.creker.screentime.ScreenTimeApplication
+import com.creker.screentime.core.UsageCsvWriter
 import com.creker.screentime.data.system.UsageAccess
 import com.creker.screentime.ui.appdetail.AppDetailScreen
 import com.creker.screentime.ui.appdetail.AppDetailViewModel
@@ -30,7 +34,11 @@ import com.creker.screentime.ui.permission.PermissionScreen
 import com.creker.screentime.ui.stats.StatsScreen
 import com.creker.screentime.ui.stats.StatsViewModel
 import com.creker.screentime.ui.theme.CrekerScreenTimeTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
 
@@ -55,6 +63,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun ScreenTimeApp(container: AppContainer) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val statsViewModel: StatsViewModel = viewModel(factory = StatsViewModel.factory(container))
     val statsState by statsViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -74,6 +83,20 @@ private fun ScreenTimeApp(container: AppContainer) {
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // "Save all data": the user picks a destination via the system file picker, and
+    // the whole local history is written there as CSV. Nothing is sent anywhere —
+    // this is the one file I/O operation in the app, and it only ever writes to a
+    // location the user explicitly chose.
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val csv = UsageCsvWriter.write(container.usageRepository.exportRows())
+            withContext(Dispatchers.IO) {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(csv.toByteArray(Charsets.UTF_8)) }
+            }
+        }
     }
 
     BackHandler(enabled = selectedPackage != null) { selectedPackage = null }
@@ -108,6 +131,8 @@ private fun ScreenTimeApp(container: AppContainer) {
             onBack = { selectedPackage = null },
             onPrevious = detailViewModel::goToPreviousPeriod,
             onNext = detailViewModel::goToNextPeriod,
+            onSelectRange = detailViewModel::selectRange,
+            onSelectMetric = detailViewModel::selectMetric,
         )
     } else {
         StatsScreen(
@@ -117,6 +142,10 @@ private fun ScreenTimeApp(container: AppContainer) {
             onSelectCustomRange = statsViewModel::selectCustomRange,
             onRefresh = statsViewModel::refresh,
             onAppClick = { selectedPackage = it },
+            onSelectMetric = statsViewModel::selectMetric,
+            onExport = { exportLauncher.launch("screen_time_${LocalDate.now().format(EXPORT_FILE_DATE_FORMATTER)}.csv") },
         )
     }
 }
+
+private val EXPORT_FILE_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")

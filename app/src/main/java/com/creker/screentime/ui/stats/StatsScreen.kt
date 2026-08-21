@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
+import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.StatsPeriod
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -46,6 +48,8 @@ fun StatsScreen(
     onSelectCustomRange: (LocalDate, LocalDate) -> Unit,
     onRefresh: () -> Unit,
     onAppClick: (String) -> Unit,
+    onSelectMetric: (ChartMetric) -> Unit,
+    onExport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var rangeDialogVisible by remember { mutableStateOf(false) }
@@ -56,6 +60,12 @@ fun StatsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = onExport) {
+                        Icon(
+                            imageVector = Icons.Rounded.FileDownload,
+                            contentDescription = stringResource(R.string.export_action),
+                        )
+                    }
                     IconButton(onClick = onRefresh, enabled = !state.isRefreshing) {
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
@@ -83,7 +93,8 @@ fun StatsScreen(
             )
 
             UsageOverviewCard(
-                totalMillis = state.totalMillis,
+                metric = state.metric,
+                onMetricChange = onSelectMetric,
                 range = state.range,
                 appCount = state.apps.size,
                 chartPoints = state.chartPoints,

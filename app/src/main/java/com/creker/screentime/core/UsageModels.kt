@@ -19,12 +19,26 @@ enum class RawUsageEventType {
     /** The activity of [RawUsageEvent.packageName] left the foreground. */
     BACKGROUND,
 
+    /** The screen turned on. Opens a device-wide "screen on" interval. */
+    SCREEN_ON,
+
     /**
-     * The screen turned off or the keyguard appeared. Not every device pauses the
-     * foreground activity in that case, so this has to end the session explicitly —
-     * otherwise a phone left on a table would collect hours of "usage".
+     * The screen turned off. Closes any open app session (not every device pauses
+     * the foreground activity on its own — a phone left on a table would otherwise
+     * collect hours of "usage") and the device-wide "screen on" interval.
      */
     SCREEN_OFF,
+
+    /**
+     * The lock screen appeared over whatever was running. Also closes any open app
+     * session, and opens a "keyguard shown" interval that gets subtracted from
+     * screen-on time, since a locked screen is not time actually spent using the
+     * phone.
+     */
+    KEYGUARD_SHOWN,
+
+    /** The lock screen was dismissed (device unlocked). Closes a "keyguard shown" interval. */
+    KEYGUARD_HIDDEN,
 
     /** The device shut down; anything still open ended at that moment. */
     SHUTDOWN,
@@ -53,16 +67,20 @@ data class AppUsageTotal(
     val usageMillis: Long,
 )
 
-/** Total usage summed across every app for one calendar day — one point on the chart. */
+/**
+ * One point on a chart: a calendar day's worth of whatever metric is currently
+ * selected — usage time, session count, or screen time — never more than one of
+ * those at once, hence the metric-neutral field name.
+ */
 data class DailyTotal(
     val day: LocalDate,
-    val usageMillis: Long,
+    val value: Long,
 )
 
-/** Total usage summed across every app for one hour of a single day, `hour` in 0..23. */
+/** One hour (0..23) of a single day's worth of whatever chart metric is selected. */
 data class HourlyUsage(
     val hour: Int,
-    val usageMillis: Long,
+    val value: Long,
 )
 
 /** One package's usage and launch count summed over a date range. */
@@ -70,3 +88,15 @@ data class AppPeriodTotal(
     val usageMillis: Long,
     val launchCount: Int,
 )
+
+/** Which quantity a chart or detail screen is currently showing. */
+enum class ChartMetric {
+    /** Time each app (or all apps) spent in the foreground. */
+    USAGE,
+
+    /** How many times each app (or all apps) was opened. */
+    SESSIONS,
+
+    /** Device-wide screen-on time, excluding whatever the lock screen itself showed. */
+    SCREEN_TIME,
+}

@@ -18,6 +18,7 @@ class AppContainer(context: Context) {
     val usageRepository by lazy {
         UsageRepository(
             usageDao = database.usageDao(),
+            deviceUsageDao = database.deviceUsageDao(),
             syncStateDao = database.syncStateDao(),
             eventSource = SystemUsageEventSource(appContext),
         )

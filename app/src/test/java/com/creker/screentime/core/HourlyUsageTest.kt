@@ -22,9 +22,9 @@ class HourlyUsageTest {
         val hourly = ForegroundSessionBuilder.toHourlyUsage(intervals, zone)
 
         assertEquals(24, hourly.size)
-        assertEquals(TimeUnit.MINUTES.toMillis(10), hourly[10].usageMillis)
-        assertEquals(0L, hourly[9].usageMillis)
-        assertEquals(0L, hourly[11].usageMillis)
+        assertEquals(TimeUnit.MINUTES.toMillis(10), hourly[10].value)
+        assertEquals(0L, hourly[9].value)
+        assertEquals(0L, hourly[11].value)
     }
 
     @Test
@@ -35,8 +35,8 @@ class HourlyUsageTest {
 
         val hourly = ForegroundSessionBuilder.toHourlyUsage(intervals, zone)
 
-        assertEquals(TimeUnit.MINUTES.toMillis(10), hourly[10].usageMillis)
-        assertEquals(TimeUnit.MINUTES.toMillis(20), hourly[11].usageMillis)
+        assertEquals(TimeUnit.MINUTES.toMillis(10), hourly[10].value)
+        assertEquals(TimeUnit.MINUTES.toMillis(20), hourly[11].value)
     }
 
     @Test
@@ -47,11 +47,11 @@ class HourlyUsageTest {
 
         val hourly = ForegroundSessionBuilder.toHourlyUsage(intervals, zone)
 
-        assertEquals(end - start, hourly.sumOf { it.usageMillis })
-        assertEquals(TimeUnit.MINUTES.toMillis(20), hourly[9].usageMillis)
-        assertEquals(TimeUnit.HOURS.toMillis(1), hourly[10].usageMillis)
-        assertEquals(TimeUnit.HOURS.toMillis(1), hourly[11].usageMillis)
-        assertEquals(TimeUnit.MINUTES.toMillis(10), hourly[12].usageMillis)
+        assertEquals(end - start, hourly.sumOf { it.value })
+        assertEquals(TimeUnit.MINUTES.toMillis(20), hourly[9].value)
+        assertEquals(TimeUnit.HOURS.toMillis(1), hourly[10].value)
+        assertEquals(TimeUnit.HOURS.toMillis(1), hourly[11].value)
+        assertEquals(TimeUnit.MINUTES.toMillis(10), hourly[12].value)
     }
 
     @Test
@@ -60,7 +60,7 @@ class HourlyUsageTest {
 
         assertEquals(24, hourly.size)
         assertEquals((0..23).toList(), hourly.map { it.hour })
-        assertEquals(0L, hourly.sumOf { it.usageMillis })
+        assertEquals(0L, hourly.sumOf { it.value })
     }
 
     @Test
@@ -72,6 +72,6 @@ class HourlyUsageTest {
 
         val hourly = ForegroundSessionBuilder.toHourlyUsage(intervals, zone)
 
-        assertEquals(TimeUnit.MINUTES.toMillis(7), hourly[14].usageMillis)
+        assertEquals(TimeUnit.MINUTES.toMillis(7), hourly[14].value)
     }
 }

@@ -47,4 +47,19 @@
     <string name="app_detail_max_day_label">Макс. использование за день</string>
     <string name="app_detail_install_date_label">Дата установки</string>
     <string name="app_detail_days_format">%1$d дн.</string>
+
+    <!-- Chart metric picker -->
+    <string name="metric_usage">Использование</string>
+    <string name="metric_sessions">Сеансы</string>
+    <string name="metric_screen_time">Экранное время</string>
+    <string name="total_sessions_label">Всего сеансов</string>
+    <string name="total_device_screen_time_label">Время на экране</string>
+
+    <!-- Period presets (app detail screen) -->
+    <string name="period_preset_last_week">Последняя неделя</string>
+    <string name="period_preset_last_month">Последний месяц</string>
+    <string name="period_preset_custom">Свой период</string>
+
+    <!-- Export -->
+    <string name="export_action">Сохранить данные</string>
 </resources>

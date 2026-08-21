@@ -1,7 +1,9 @@
 package com.creker.screentime.ui.appdetail
 
 import androidx.compose.ui.graphics.ImageBitmap
+import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
+import com.creker.screentime.ui.chart.ChartPoint
 import java.time.LocalDate
 
 data class AppDetailUiState(
@@ -18,5 +20,7 @@ data class AppDetailUiState(
     val currentStreakDays: Int = 0,
     val longestStreakDays: Int = 0,
     val maxDayMillis: Long = 0L,
+    val metric: ChartMetric = ChartMetric.USAGE,
+    val chartPoints: List<ChartPoint> = emptyList(),
     val isLoading: Boolean = true,
 )

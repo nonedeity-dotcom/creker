@@ -7,12 +7,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.creker.screentime.AppContainer
 import com.creker.screentime.core.AppUsageTotal
-import com.creker.screentime.core.DailyTotal
+import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
-import com.creker.screentime.core.HourlyUsage
 import com.creker.screentime.core.StatsPeriod
 import com.creker.screentime.data.UsageRepository
 import com.creker.screentime.data.system.AppInfoProvider
+import com.creker.screentime.ui.chart.ChartPoint
+import com.creker.screentime.ui.chart.toDailyChartPoints
+import com.creker.screentime.ui.chart.toHourlyChartPoints
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -27,9 +29,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 
 class StatsViewModel(
     private val repository: UsageRepository,
@@ -37,6 +36,7 @@ class StatsViewModel(
 ) : ViewModel() {
 
     private val period = MutableStateFlow<StatsPeriod>(StatsPeriod.Day)
+    private val metric = MutableStateFlow(ChartMetric.USAGE)
     private val refreshing = MutableStateFlow(false)
 
     /**
@@ -47,6 +47,7 @@ class StatsViewModel(
 
     private data class ScreenData(
         val period: StatsPeriod,
+        val metric: ChartMetric,
         val range: DayRange,
         val rows: List<AppUsageTotal>,
         val chartPoints: List<ChartPoint>,
@@ -54,11 +55,11 @@ class StatsViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val screenData: Flow<ScreenData> =
-        combine(period, resolveTicket) { selected, _ -> selected }
-            .flatMapLatest { selected ->
-                val range = selected.resolve(repository.today())
-                combine(repository.observeTotals(range), chartPointsFlow(range)) { rows, points ->
-                    ScreenData(selected, range, rows, points)
+        combine(period, metric, resolveTicket) { selectedPeriod, selectedMetric, _ -> selectedPeriod to selectedMetric }
+            .flatMapLatest { (selectedPeriod, selectedMetric) ->
+                val range = selectedPeriod.resolve(repository.today())
+                combine(repository.observeTotals(range), chartPointsFlow(range, selectedMetric)) { rows, points ->
+                    ScreenData(selectedPeriod, selectedMetric, range, rows, points)
                 }
             }
 
@@ -69,17 +70,35 @@ class StatsViewModel(
      * hourly breakdown of a past day would need events the system has likely already
      * discarded and would render as a misleadingly flat chart.
      */
-    private fun chartPointsFlow(range: DayRange): Flow<List<ChartPoint>> =
-        if (range.dayCount == 1 && range.from == repository.today()) {
-            flow { emit(repository.hourlyBreakdown(range.from).toChartPoints()) }
-        } else {
-            repository.observeDailyTotals(range).map { it.toChartPoints(useWeekdayLabels = range.dayCount <= 8) }
+    private fun chartPointsFlow(range: DayRange, metric: ChartMetric): Flow<List<ChartPoint>> {
+        val isToday = range.dayCount == 1 && range.from == repository.today()
+        val useWeekdayLabels = range.dayCount <= 8
+        return when (metric) {
+            ChartMetric.USAGE -> if (isToday) {
+                flow { emit(repository.hourlyBreakdown(range.from).toHourlyChartPoints()) }
+            } else {
+                repository.observeDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }
+            }
+
+            ChartMetric.SESSIONS -> if (isToday) {
+                flow { emit(repository.hourlySessions(range.from).toHourlyChartPoints()) }
+            } else {
+                repository.observeSessionDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }
+            }
+
+            ChartMetric.SCREEN_TIME -> if (isToday) {
+                flow { emit(repository.hourlyScreenTime(range.from).toHourlyChartPoints()) }
+            } else {
+                repository.observeDeviceDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }
+            }
         }
+    }
 
     val uiState: StateFlow<StatsUiState> =
         combine(screenData, repository.observeEarliestDay(), refreshing) { data, earliest, isRefreshing ->
             StatsUiState(
                 period = data.period,
+                metric = data.metric,
                 range = data.range,
                 totalMillis = data.rows.sumOf { it.usageMillis },
                 apps = data.rows.toUiRows(),
@@ -103,6 +122,10 @@ class StatsViewModel(
 
     fun selectCustomRange(from: LocalDate, to: LocalDate) {
         period.value = StatsPeriod.Custom(from, to)
+    }
+
+    fun selectMetric(newMetric: ChartMetric) {
+        metric.value = newMetric
     }
 
     /** Pulls fresh events from the system into the local database. */
@@ -135,23 +158,8 @@ class StatsViewModel(
         }
     }
 
-    private fun List<HourlyUsage>.toChartPoints(): List<ChartPoint> =
-        map { ChartPoint(label = "%02d:00".format(it.hour), usageMillis = it.usageMillis) }
-
-    private fun List<DailyTotal>.toChartPoints(useWeekdayLabels: Boolean): List<ChartPoint> =
-        map { daily ->
-            val label = if (useWeekdayLabels) {
-                daily.day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("ru"))
-                    .replaceFirstChar { it.uppercase() }
-            } else {
-                daily.day.format(MONTH_DAY_FORMATTER)
-            }
-            ChartPoint(label = label, usageMillis = daily.usageMillis)
-        }
-
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
-        private val MONTH_DAY_FORMATTER = DateTimeFormatter.ofPattern("d MMM", Locale("ru"))
 
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
             initializer {

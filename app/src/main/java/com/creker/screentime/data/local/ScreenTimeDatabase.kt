@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [AppUsageEntity::class, SyncStateEntity::class],
-    version = 2,
+    entities = [AppUsageEntity::class, SyncStateEntity::class, DeviceUsageEntity::class],
+    version = 3,
     exportSchema = true,
 )
 abstract class ScreenTimeDatabase : RoomDatabase() {
@@ -15,6 +15,8 @@ abstract class ScreenTimeDatabase : RoomDatabase() {
     abstract fun usageDao(): UsageDao
 
     abstract fun syncStateDao(): SyncStateDao
+
+    abstract fun deviceUsageDao(): DeviceUsageDao
 
     companion object {
         private const val NAME = "screen_time.db"

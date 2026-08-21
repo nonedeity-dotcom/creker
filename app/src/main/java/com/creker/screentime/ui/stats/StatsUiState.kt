@@ -1,12 +1,11 @@
 package com.creker.screentime.ui.stats
 
 import androidx.compose.ui.graphics.ImageBitmap
+import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.StatsPeriod
+import com.creker.screentime.ui.chart.ChartPoint
 import java.time.LocalDate
-
-/** One point on the usage chart: an hour of the current day, or a day of a longer period. */
-data class ChartPoint(val label: String, val usageMillis: Long)
 
 /** One row of the app list. */
 data class AppUsageUi(
@@ -22,7 +21,9 @@ data class AppUsageUi(
 
 data class StatsUiState(
     val period: StatsPeriod = StatsPeriod.Day,
+    val metric: ChartMetric = ChartMetric.USAGE,
     val range: DayRange = DayRange(LocalDate.now(), LocalDate.now()),
+    /** Total app-usage time for the period — always usage time, regardless of [metric]. */
     val totalMillis: Long = 0L,
     val apps: List<AppUsageUi> = emptyList(),
     val chartPoints: List<ChartPoint> = emptyList(),

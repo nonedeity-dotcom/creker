@@ -34,7 +34,10 @@ class SystemUsageEventSource(private val context: Context) {
         UsageEvents.Event.MOVE_TO_FOREGROUND -> RawUsageEventType.FOREGROUND
         // Same for ACTIVITY_PAUSED and MOVE_TO_BACKGROUND.
         UsageEvents.Event.MOVE_TO_BACKGROUND -> RawUsageEventType.BACKGROUND
-        SCREEN_NON_INTERACTIVE, KEYGUARD_SHOWN -> RawUsageEventType.SCREEN_OFF
+        SCREEN_INTERACTIVE -> RawUsageEventType.SCREEN_ON
+        SCREEN_NON_INTERACTIVE -> RawUsageEventType.SCREEN_OFF
+        KEYGUARD_SHOWN -> RawUsageEventType.KEYGUARD_SHOWN
+        KEYGUARD_HIDDEN -> RawUsageEventType.KEYGUARD_HIDDEN
         DEVICE_SHUTDOWN -> RawUsageEventType.SHUTDOWN
         else -> null
     }
@@ -45,8 +48,10 @@ class SystemUsageEventSource(private val context: Context) {
          * levels than the app's minimum; the numeric values are part of the platform
          * contract and never change.
          */
+        const val SCREEN_INTERACTIVE = 15 // UsageEvents.Event.SCREEN_INTERACTIVE, API 28
         const val SCREEN_NON_INTERACTIVE = 16 // UsageEvents.Event.SCREEN_NON_INTERACTIVE, API 28
         const val KEYGUARD_SHOWN = 17 // UsageEvents.Event.KEYGUARD_SHOWN, API 28
+        const val KEYGUARD_HIDDEN = 18 // UsageEvents.Event.KEYGUARD_HIDDEN, API 28
         const val DEVICE_SHUTDOWN = 26 // UsageEvents.Event.DEVICE_SHUTDOWN, API 30
     }
 }
