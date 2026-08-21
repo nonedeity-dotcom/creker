@@ -157,6 +157,52 @@ class ForegroundSessionBuilderTest {
     }
 
     @Test
+    fun `launches are counted per day and package`() {
+        val events = listOf(
+            event("com.chat", "2026-08-20T10:00:00", RawUsageEventType.FOREGROUND),
+            event("com.chat", "2026-08-20T11:00:00", RawUsageEventType.FOREGROUND),
+            event("com.chat", "2026-08-20T11:30:00", RawUsageEventType.BACKGROUND),
+        )
+
+        val launches = ForegroundSessionBuilder.countLaunches(
+            events = events,
+            rangeStartMs = at("2026-08-20T00:00:00"),
+            rangeEndMs = at("2026-08-21T00:00:00"),
+            zone = zone,
+        )
+
+        assertEquals(2, launches[LocalDate.of(2026, 8, 20) to "com.chat"])
+    }
+
+    @Test
+    fun `events outside the window do not count as launches`() {
+        val events = listOf(
+            event("com.chat", "2026-08-19T23:00:00", RawUsageEventType.FOREGROUND),
+        )
+
+        val launches = ForegroundSessionBuilder.countLaunches(
+            events = events,
+            rangeStartMs = at("2026-08-20T00:00:00"),
+            rangeEndMs = at("2026-08-21T00:00:00"),
+            zone = zone,
+        )
+
+        assertTrue(launches.isEmpty())
+    }
+
+    @Test
+    fun `toDailyUsage merges in the matching launch counts`() {
+        val intervals = listOf(
+            UsageInterval("com.chat", at("2026-08-20T10:00:00"), at("2026-08-20T10:05:00")),
+        )
+        val launches = mapOf(LocalDate.of(2026, 8, 20) to "com.chat" to 3)
+
+        val daily = ForegroundSessionBuilder.toDailyUsage(intervals, zone, launches)
+
+        assertEquals(3, daily.single().launchCount)
+    }
+
+    @Test
     fun `a background event for another app does not close the current session`() {
         val events = listOf(
             event("com.chat", "2026-08-20T10:00:00", RawUsageEventType.FOREGROUND),

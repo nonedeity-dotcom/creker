@@ -32,4 +32,19 @@
     <string name="range_picker_dismiss">Отмена</string>
     <string name="range_single_day">%1$s</string>
     <string name="range_days">%1$s — %2$s</string>
+
+    <!-- App detail screen -->
+    <string name="app_detail_back">Назад</string>
+    <string name="app_detail_previous_period">Предыдущий период</string>
+    <string name="app_detail_next_period">Следующий период</string>
+    <string name="app_detail_today">Сегодня</string>
+    <string name="app_detail_yesterday">Вчера</string>
+    <string name="app_detail_usage_label">Использование</string>
+    <string name="app_detail_sessions_label">Сеансы</string>
+    <string name="app_detail_average_label">Среднее время в день</string>
+    <string name="app_detail_current_streak_label">Текущая серия использования</string>
+    <string name="app_detail_longest_streak_label">Макс. серия использования</string>
+    <string name="app_detail_max_day_label">Макс. использование за день</string>
+    <string name="app_detail_install_date_label">Дата установки</string>
+    <string name="app_detail_days_format">%1$d дн.</string>
 </resources>

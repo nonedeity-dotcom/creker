@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [AppUsageEntity::class, SyncStateEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class ScreenTimeDatabase : RoomDatabase() {
@@ -28,7 +28,13 @@ abstract class ScreenTimeDatabase : RoomDatabase() {
                     context.applicationContext,
                     ScreenTimeDatabase::class.java,
                     NAME,
-                ).build().also { instance = it }
+                )
+                    // Nothing stored here is user-authored — it is re-derived from the
+                    // system on the next sync — so a schema bump just rebuilds the
+                    // table instead of carrying a migration for data that regenerates
+                    // itself anyway (aside from history older than the sync window).
+                    .fallbackToDestructiveMigration()
+                    .build().also { instance = it }
             }
     }
 }

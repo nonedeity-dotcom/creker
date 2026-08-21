@@ -39,11 +39,12 @@ data class UsageInterval(
     val durationMs: Long get() = endMs - startMs
 }
 
-/** Foreground time of one package on one calendar day, in the device time zone. */
+/** Foreground time and launch count of one package on one calendar day. */
 data class DailyUsage(
     val day: LocalDate,
     val packageName: String,
     val usageMillis: Long,
+    val launchCount: Int,
 )
 
 /** Total usage of one package over the selected period. */
@@ -62,4 +63,10 @@ data class DailyTotal(
 data class HourlyUsage(
     val hour: Int,
     val usageMillis: Long,
+)
+
+/** One package's usage and launch count summed over a date range. */
+data class AppPeriodTotal(
+    val usageMillis: Long,
+    val launchCount: Int,
 )

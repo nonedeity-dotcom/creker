@@ -66,7 +66,11 @@ object ForegroundSessionBuilder {
      * Splits intervals on local midnight and sums them per day and package, so that a
      * session running across midnight is credited to both days.
      */
-    fun toDailyUsage(intervals: List<UsageInterval>, zone: ZoneId): List<DailyUsage> {
+    fun toDailyUsage(
+        intervals: List<UsageInterval>,
+        zone: ZoneId,
+        launches: Map<Pair<LocalDate, String>, Int> = emptyMap(),
+    ): List<DailyUsage> {
         val totals = mutableMapOf<Pair<LocalDate, String>, Long>()
         for (interval in intervals) {
             var cursor = interval.startMs
@@ -81,8 +85,32 @@ object ForegroundSessionBuilder {
             }
         }
 
-        return totals.map { (key, millis) -> DailyUsage(key.first, key.second, millis) }
-            .sortedWith(compareBy({ it.day }, { it.packageName }))
+        val keys = totals.keys + launches.keys
+        return keys.map { (day, pkg) ->
+            DailyUsage(
+                day = day,
+                packageName = pkg,
+                usageMillis = totals[day to pkg] ?: 0L,
+                launchCount = launches[day to pkg] ?: 0,
+            )
+        }.sortedWith(compareBy({ it.day }, { it.packageName }))
+    }
+
+    /** Counts foreground entries per day and package — how many times each app was opened. */
+    fun countLaunches(
+        events: List<RawUsageEvent>,
+        rangeStartMs: Long,
+        rangeEndMs: Long,
+        zone: ZoneId,
+    ): Map<Pair<LocalDate, String>, Int> {
+        val launches = mutableMapOf<Pair<LocalDate, String>, Int>()
+        for (event in events) {
+            if (event.type != RawUsageEventType.FOREGROUND) continue
+            if (event.timestampMs < rangeStartMs || event.timestampMs >= rangeEndMs) continue
+            val key = event.timestampMs.toLocalDate(zone) to event.packageName
+            launches[key] = (launches[key] ?: 0) + 1
+        }
+        return launches
     }
 
     /**

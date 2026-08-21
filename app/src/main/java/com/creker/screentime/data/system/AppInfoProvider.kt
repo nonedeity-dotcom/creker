@@ -7,12 +7,13 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import java.util.concurrent.ConcurrentHashMap
 
-/** Display name and icon of an installed package. */
+/** Display name, icon and install date of an installed package. */
 data class AppInfo(
     val packageName: String,
     val label: String,
     val icon: ImageBitmap?,
     val isInstalled: Boolean,
+    val installedAtMs: Long?,
 )
 
 /**
@@ -35,7 +36,7 @@ class AppInfoProvider(context: Context) {
 
         if (applicationInfo == null) {
             // Uninstalled since the usage was recorded, or hidden by package visibility.
-            return AppInfo(packageName, packageName, icon = null, isInstalled = false)
+            return AppInfo(packageName, packageName, icon = null, isInstalled = false, installedAtMs = null)
         }
 
         val label = runCatching {
@@ -48,7 +49,11 @@ class AppInfoProvider(context: Context) {
                 .asImageBitmap()
         }.getOrNull()
 
-        return AppInfo(packageName, label, icon, isInstalled = true)
+        val installedAtMs = runCatching {
+            packageManager.getPackageInfo(packageName, 0).firstInstallTime
+        }.getOrNull()
+
+        return AppInfo(packageName, label, icon, isInstalled = true, installedAtMs = installedAtMs)
     }
 
     private companion object {

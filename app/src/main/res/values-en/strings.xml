@@ -28,4 +28,18 @@
     <string name="range_picker_dismiss">Cancel</string>
     <string name="range_single_day">%1$s</string>
     <string name="range_days">%1$s — %2$s</string>
+
+    <string name="app_detail_back">Back</string>
+    <string name="app_detail_previous_period">Previous period</string>
+    <string name="app_detail_next_period">Next period</string>
+    <string name="app_detail_today">Today</string>
+    <string name="app_detail_yesterday">Yesterday</string>
+    <string name="app_detail_usage_label">Usage</string>
+    <string name="app_detail_sessions_label">Sessions</string>
+    <string name="app_detail_average_label">Average per day</string>
+    <string name="app_detail_current_streak_label">Current streak</string>
+    <string name="app_detail_longest_streak_label">Longest streak</string>
+    <string name="app_detail_max_day_label">Highest single-day usage</string>
+    <string name="app_detail_install_date_label">Install date</string>
+    <string name="app_detail_days_format">%1$d d</string>
 </resources>

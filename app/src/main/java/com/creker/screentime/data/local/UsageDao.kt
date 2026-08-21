@@ -33,6 +33,20 @@ abstract class UsageDao {
     )
     abstract fun observeDailyTotals(fromDate: String, toDate: String): Flow<List<DateTotalRow>>
 
+    /** One package's full per-day history (all locally retained days), oldest first. */
+    @Query("SELECT date, usage_millis FROM app_usage WHERE package_name = :packageName ORDER BY date ASC")
+    abstract fun observeAppHistory(packageName: String): Flow<List<DateTotalRow>>
+
+    /** One package's usage and launch count summed over a date range. */
+    @Query(
+        """
+        SELECT SUM(usage_millis) AS usage_millis, SUM(launch_count) AS launch_count
+        FROM app_usage
+        WHERE package_name = :packageName AND date BETWEEN :fromDate AND :toDate
+        """
+    )
+    abstract fun observeAppPeriodTotal(packageName: String, fromDate: String, toDate: String): Flow<AppPeriodTotalRow>
+
     /** Earliest day the database holds, used to explain a still-short history. */
     @Query("SELECT MIN(date) FROM app_usage")
     abstract fun observeEarliestDate(): Flow<String?>

@@ -1,5 +1,6 @@
 package com.creker.screentime.data
 
+import com.creker.screentime.core.AppPeriodTotal
 import com.creker.screentime.core.AppUsageTotal
 import com.creker.screentime.core.DailyTotal
 import com.creker.screentime.core.DayRange
@@ -77,6 +78,21 @@ class UsageRepository(
     }
 
     /**
+     * One package's full per-day history — every locally retained day, not just a
+     * period — for the current/longest streak and single-day-max stats on its detail
+     * screen, which need to look further back than any one period covers.
+     */
+    fun observeAppHistory(packageName: String): Flow<List<DailyTotal>> =
+        usageDao.observeAppHistory(packageName).map { rows ->
+            rows.map { DailyTotal(LocalDate.parse(it.date), it.usageMillis) }
+        }
+
+    /** One package's usage and launch count summed over [range]. */
+    fun observeAppPeriodTotal(packageName: String, range: DayRange): Flow<AppPeriodTotal> =
+        usageDao.observeAppPeriodTotal(packageName, range.from.toString(), range.to.toString())
+            .map { row -> AppPeriodTotal(usageMillis = row.usageMillis ?: 0L, launchCount = row.launchCount ?: 0) }
+
+    /**
      * Pulls everything the system still remembers into the local database.
      *
      * On a first run this imports the whole retention window, which is the last seven
@@ -114,12 +130,14 @@ class UsageRepository(
             rangeEndMs = nowMs,
             nowMs = nowMs,
         )
-        val rows = ForegroundSessionBuilder.toDailyUsage(intervals, zone)
+        val launches = ForegroundSessionBuilder.countLaunches(events, windowStartMs, nowMs, zone)
+        val rows = ForegroundSessionBuilder.toDailyUsage(intervals, zone, launches)
             .map { usage ->
                 AppUsageEntity(
                     packageName = usage.packageName,
                     date = usage.day.toString(),
                     usageMillis = usage.usageMillis,
+                    launchCount = usage.launchCount,
                 )
             }
 

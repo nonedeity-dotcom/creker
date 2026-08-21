@@ -1,6 +1,7 @@
 package com.creker.screentime.ui.stats
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,15 +28,17 @@ import com.creker.screentime.R
 import com.creker.screentime.core.DurationFormatter
 import java.util.Locale
 
-/** Icon, name, time as чч:мм:сс with its share of the total, and a usage bar. */
+/** Icon, name, time as чч:мм:сс with its share of the total, and a usage bar. Tap for details. */
 @Composable
 fun AppUsageRow(
     app: AppUsageUi,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

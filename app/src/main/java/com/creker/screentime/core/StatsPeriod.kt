@@ -14,6 +14,9 @@ data class DayRange(val from: LocalDate, val to: LocalDate) {
     fun endMillis(zone: ZoneId): Long = to.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
 }
 
+/** Shifts both ends of the range by the same number of days — steps through history a window at a time. */
+fun DayRange.shiftBy(days: Int): DayRange = DayRange(from.plusDays(days.toLong()), to.plusDays(days.toLong()))
+
 /** The period selector at the top of the screen. */
 sealed interface StatsPeriod {
 

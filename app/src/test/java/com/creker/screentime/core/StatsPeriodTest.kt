@@ -58,4 +58,12 @@ class StatsPeriodTest {
         assertEquals(expectedEnd, range.endMillis(zone))
         assertEquals(24 * 60 * 60 * 1000L, range.endMillis(zone) - range.startMillis(zone))
     }
+
+    @Test
+    fun `shiftBy moves both ends of the range by the same number of days`() {
+        val range = DayRange(LocalDate.of(2026, 8, 15), today)
+
+        assertEquals(DayRange(LocalDate.of(2026, 8, 8), LocalDate.of(2026, 8, 14)), range.shiftBy(-7))
+        assertEquals(DayRange(LocalDate.of(2026, 8, 22), LocalDate.of(2026, 8, 28)), range.shiftBy(7))
+    }
 }

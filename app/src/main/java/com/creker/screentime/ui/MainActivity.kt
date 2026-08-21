@@ -2,6 +2,7 @@ package com.creker.screentime.ui
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +24,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creker.screentime.AppContainer
 import com.creker.screentime.ScreenTimeApplication
 import com.creker.screentime.data.system.UsageAccess
+import com.creker.screentime.ui.appdetail.AppDetailScreen
+import com.creker.screentime.ui.appdetail.AppDetailViewModel
 import com.creker.screentime.ui.permission.PermissionScreen
 import com.creker.screentime.ui.stats.StatsScreen
 import com.creker.screentime.ui.stats.StatsViewModel
@@ -52,11 +55,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun ScreenTimeApp(container: AppContainer) {
     val context = LocalContext.current
-    val viewModel: StatsViewModel = viewModel(factory = StatsViewModel.factory(container))
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val statsViewModel: StatsViewModel = viewModel(factory = StatsViewModel.factory(container))
+    val statsState by statsViewModel.uiState.collectAsStateWithLifecycle()
 
     var hasAccess by remember { mutableStateOf(UsageAccess.isGranted(context)) }
     var settingsUnavailable by remember { mutableStateOf(false) }
+    var selectedPackage by remember { mutableStateOf<String?>(null) }
 
     // The permission is granted on a system screen, so the only reliable moment to
     // re-check it is when this activity comes back to the foreground.
@@ -65,31 +69,54 @@ private fun ScreenTimeApp(container: AppContainer) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasAccess = UsageAccess.isGranted(context)
-                if (hasAccess) viewModel.refresh()
+                if (hasAccess) statsViewModel.refresh()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    if (hasAccess) {
-        StatsScreen(
-            state = state,
-            today = LocalDate.now(),
-            onSelectPeriod = viewModel::selectPeriod,
-            onSelectCustomRange = viewModel::selectCustomRange,
-            onRefresh = viewModel::refresh,
-        )
-    } else {
+    BackHandler(enabled = selectedPackage != null) { selectedPackage = null }
+
+    if (!hasAccess) {
         PermissionScreen(
             onOpenSettings = {
                 settingsUnavailable = !UsageAccess.openSettings(context)
             },
             onRecheck = {
                 hasAccess = UsageAccess.isGranted(context)
-                if (hasAccess) viewModel.refresh()
+                if (hasAccess) statsViewModel.refresh()
             },
             settingsUnavailable = settingsUnavailable,
+        )
+        return
+    }
+
+    val openPackage = selectedPackage
+    if (openPackage != null) {
+        // Keyed on the package name so navigating from one app's detail straight to
+        // another's (without going back to the list first) starts a fresh view model
+        // instead of reusing the previous app's state.
+        val detailViewModel: AppDetailViewModel = viewModel(
+            key = openPackage,
+            factory = AppDetailViewModel.factory(container, openPackage, statsState.range),
+        )
+        val detailState by detailViewModel.uiState.collectAsStateWithLifecycle()
+        AppDetailScreen(
+            state = detailState,
+            today = LocalDate.now(),
+            onBack = { selectedPackage = null },
+            onPrevious = detailViewModel::goToPreviousPeriod,
+            onNext = detailViewModel::goToNextPeriod,
+        )
+    } else {
+        StatsScreen(
+            state = statsState,
+            today = LocalDate.now(),
+            onSelectPeriod = statsViewModel::selectPeriod,
+            onSelectCustomRange = statsViewModel::selectCustomRange,
+            onRefresh = statsViewModel::refresh,
+            onAppClick = { selectedPackage = it },
         )
     }
 }

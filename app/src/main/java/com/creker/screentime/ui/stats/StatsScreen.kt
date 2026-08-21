@@ -45,6 +45,7 @@ fun StatsScreen(
     onSelectPeriod: (StatsPeriod) -> Unit,
     onSelectCustomRange: (LocalDate, LocalDate) -> Unit,
     onRefresh: () -> Unit,
+    onAppClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var rangeDialogVisible by remember { mutableStateOf(false) }
@@ -122,7 +123,7 @@ fun StatsScreen(
                         contentPadding = PaddingValues(bottom = 24.dp),
                     ) {
                         items(items = state.apps, key = { it.packageName }) { app ->
-                            AppUsageRow(app)
+                            AppUsageRow(app, onClick = { onAppClick(app.packageName) })
                             HorizontalDivider(
                                 modifier = Modifier.padding(start = 74.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant,
