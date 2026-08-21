@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Phone body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,28h28a4,4 0,0 1,4 4v44a4,4 0,0 1,-4 4h-28a4,4 0,0 1,-4 -4v-44a4,4 0,0 1,4 -4z" />
+    <!-- Screen -->
+    <path
+        android:fillColor="#1B5E4B"
+        android:pathData="M40,36h28v36h-28z" />
+    <!-- Clock hands on the screen -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M53,44h2v11h9v2h-11z" />
+</vector>

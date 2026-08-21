@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Screen Time</string>
+
+    <string name="permission_title">Usage access is required</string>
+    <string name="permission_body">This app measures screen time locally, through an Android system service. To read that data, turn on “Usage access” for this app.\n\nNothing is uploaded anywhere — all data stays on your device.</string>
+    <string name="permission_open_settings">Open settings</string>
+    <string name="permission_recheck">I enabled it, check again</string>
+    <string name="permission_settings_missing">Could not open the system screen. Go to Settings → Apps → Special access → Usage access.</string>
+
+    <string name="period_today">Today</string>
+    <string name="period_week">Week</string>
+    <string name="period_month">Month</string>
+    <string name="period_custom">Custom</string>
+
+    <string name="total_screen_time">Total screen time</string>
+    <string name="apps_count">Apps: %1$d</string>
+    <string name="sorted_by_usage">Sorted from most to least used</string>
+    <string name="refresh">Refresh</string>
+    <string name="empty_title">No data yet</string>
+    <string name="empty_body">The system reported no app usage for the selected period.</string>
+    <string name="loading">Loading statistics…</string>
+    <string name="history_notice">History starts on %1$s: Android keeps detailed events for a few days only, earlier days will appear as the app keeps running.</string>
+    <string name="launches_count">Launches: %1$d</string>
+    <string name="app_icon_description">%1$s icon</string>
+
+    <string name="range_picker_title">Pick a period</string>
+    <string name="range_picker_confirm">Apply</string>
+    <string name="range_picker_dismiss">Cancel</string>
+    <string name="range_single_day">%1$s</string>
+    <string name="range_days">%1$s — %2$s</string>
+
+    <string name="duration_hours_suffix">h</string>
+    <string name="duration_minutes_suffix">m</string>
+    <string name="duration_seconds_suffix">s</string>
+</resources>
