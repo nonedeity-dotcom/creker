@@ -30,8 +30,14 @@ data class SyncStateEntity(
     }
 }
 
-/** Aggregated result of a group-by query. */
+/** Aggregated result of a group-by-package query. */
 data class PackageTotalRow(
     @ColumnInfo(name = "package_name") val packageName: String,
+    @ColumnInfo(name = "usage_millis") val usageMillis: Long,
+)
+
+/** Aggregated result of a group-by-date query, summed across every app. */
+data class DateTotalRow(
+    @ColumnInfo(name = "date") val date: String,
     @ColumnInfo(name = "usage_millis") val usageMillis: Long,
 )

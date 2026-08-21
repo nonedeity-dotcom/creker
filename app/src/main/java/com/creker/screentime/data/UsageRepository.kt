@@ -1,8 +1,10 @@
 package com.creker.screentime.data
 
 import com.creker.screentime.core.AppUsageTotal
+import com.creker.screentime.core.DailyTotal
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.ForegroundSessionBuilder
+import com.creker.screentime.core.HourlyUsage
 import com.creker.screentime.data.local.AppUsageEntity
 import com.creker.screentime.data.local.SyncStateDao
 import com.creker.screentime.data.local.SyncStateEntity
@@ -42,6 +44,37 @@ class UsageRepository(
     /** Earliest day the local history covers, or `null` while it is still empty. */
     fun observeEarliestDay(): Flow<LocalDate?> =
         usageDao.observeEarliestDate().map { date -> date?.let(LocalDate::parse) }
+
+    /**
+     * Per-day totals for the multi-day chart (week / month / a longer custom range).
+     * Days with no stored usage are zero-filled so the chart never silently skips one.
+     */
+    fun observeDailyTotals(range: DayRange): Flow<List<DailyTotal>> =
+        usageDao.observeDailyTotals(range.from.toString(), range.to.toString()).map { rows ->
+            val byDate = rows.associate { LocalDate.parse(it.date) to it.usageMillis }
+            (0 until range.dayCount).map { offset ->
+                val day = range.from.plusDays(offset.toLong())
+                DailyTotal(day, byDate[day] ?: 0L)
+            }
+        }
+
+    /**
+     * Hour-by-hour breakdown of [day]'s foreground time, for the single-day chart.
+     * Room only stores daily totals, so — unlike [observeDailyTotals] — this reads
+     * straight from the system every time; that is fine since it is only ever called
+     * for today, which is already read fresh on every [sync].
+     */
+    suspend fun hourlyBreakdown(day: LocalDate): List<HourlyUsage> = withContext(ioDispatcher) {
+        val zone = clock.zone
+        val startMs = day.atStartOfDay(zone).toInstant().toEpochMilli()
+        val endMs = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            .coerceAtMost(clock.millis())
+            .coerceAtLeast(startMs)
+
+        val events = eventSource.queryEvents(startMs - SESSION_LOOKBACK_MS, endMs)
+        val intervals = ForegroundSessionBuilder.buildIntervals(events, startMs, endMs, endMs)
+        ForegroundSessionBuilder.toHourlyUsage(intervals, zone)
+    }
 
     /**
      * Pulls everything the system still remembers into the local database.

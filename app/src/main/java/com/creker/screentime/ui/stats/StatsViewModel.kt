@@ -7,7 +7,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.creker.screentime.AppContainer
 import com.creker.screentime.core.AppUsageTotal
+import com.creker.screentime.core.DailyTotal
 import com.creker.screentime.core.DayRange
+import com.creker.screentime.core.HourlyUsage
 import com.creker.screentime.core.StatsPeriod
 import com.creker.screentime.data.UsageRepository
 import com.creker.screentime.data.system.AppInfoProvider
@@ -19,11 +21,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 class StatsViewModel(
     private val repository: UsageRepository,
@@ -39,27 +45,45 @@ class StatsViewModel(
      */
     private val resolveTicket = MutableStateFlow(0)
 
-    private data class Totals(
+    private data class ScreenData(
         val period: StatsPeriod,
         val range: DayRange,
         val rows: List<AppUsageTotal>,
+        val chartPoints: List<ChartPoint>,
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val totals: Flow<Totals> =
+    private val screenData: Flow<ScreenData> =
         combine(period, resolveTicket) { selected, _ -> selected }
             .flatMapLatest { selected ->
                 val range = selected.resolve(repository.today())
-                repository.observeTotals(range).map { Totals(selected, range, it) }
+                combine(repository.observeTotals(range), chartPointsFlow(range)) { rows, points ->
+                    ScreenData(selected, range, rows, points)
+                }
             }
 
+    /**
+     * A single day gets an hour-by-hour chart, since that is the only granularity worth
+     * plotting within one day; anything longer gets one point per day. The single-day
+     * case is restricted to today specifically — Room only stores daily totals, so an
+     * hourly breakdown of a past day would need events the system has likely already
+     * discarded and would render as a misleadingly flat chart.
+     */
+    private fun chartPointsFlow(range: DayRange): Flow<List<ChartPoint>> =
+        if (range.dayCount == 1 && range.from == repository.today()) {
+            flow { emit(repository.hourlyBreakdown(range.from).toChartPoints()) }
+        } else {
+            repository.observeDailyTotals(range).map { it.toChartPoints(useWeekdayLabels = range.dayCount <= 8) }
+        }
+
     val uiState: StateFlow<StatsUiState> =
-        combine(totals, repository.observeEarliestDay(), refreshing) { current, earliest, isRefreshing ->
+        combine(screenData, repository.observeEarliestDay(), refreshing) { data, earliest, isRefreshing ->
             StatsUiState(
-                period = current.period,
-                range = current.range,
-                totalMillis = current.rows.sumOf { it.usageMillis },
-                apps = current.rows.toUiRows(),
+                period = data.period,
+                range = data.range,
+                totalMillis = data.rows.sumOf { it.usageMillis },
+                apps = data.rows.toUiRows(),
+                chartPoints = data.chartPoints,
                 earliestStoredDay = earliest,
                 isInitialLoading = false,
                 isRefreshing = isRefreshing,
@@ -97,20 +121,37 @@ class StatsViewModel(
 
     private fun List<AppUsageTotal>.toUiRows(): List<AppUsageUi> {
         val top = maxOfOrNull { it.usageMillis } ?: 0L
-        return map { total ->
-            val info = appInfoProvider.get(total.packageName)
+        val total = sumOf { it.usageMillis }
+        return map { row ->
+            val info = appInfoProvider.get(row.packageName)
             AppUsageUi(
-                packageName = total.packageName,
+                packageName = row.packageName,
                 label = info.label,
                 icon = info.icon,
-                usageMillis = total.usageMillis,
-                shareOfTop = if (top > 0L) total.usageMillis.toFloat() / top else 0f,
+                usageMillis = row.usageMillis,
+                shareOfTop = if (top > 0L) row.usageMillis.toFloat() / top else 0f,
+                shareOfTotal = if (total > 0L) row.usageMillis.toFloat() / total else 0f,
             )
         }
     }
 
+    private fun List<HourlyUsage>.toChartPoints(): List<ChartPoint> =
+        map { ChartPoint(label = "%02d:00".format(it.hour), usageMillis = it.usageMillis) }
+
+    private fun List<DailyTotal>.toChartPoints(useWeekdayLabels: Boolean): List<ChartPoint> =
+        map { daily ->
+            val label = if (useWeekdayLabels) {
+                daily.day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("ru"))
+                    .replaceFirstChar { it.uppercase() }
+            } else {
+                daily.day.format(MONTH_DAY_FORMATTER)
+            }
+            ChartPoint(label = label, usageMillis = daily.usageMillis)
+        }
+
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
+        private val MONTH_DAY_FORMATTER = DateTimeFormatter.ofPattern("d MMM", Locale("ru"))
 
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
             initializer {

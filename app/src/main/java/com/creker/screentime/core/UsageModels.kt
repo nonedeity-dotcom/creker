@@ -51,3 +51,15 @@ data class AppUsageTotal(
     val packageName: String,
     val usageMillis: Long,
 )
+
+/** Total usage summed across every app for one calendar day — one point on the chart. */
+data class DailyTotal(
+    val day: LocalDate,
+    val usageMillis: Long,
+)
+
+/** Total usage summed across every app for one hour of a single day, `hour` in 0..23. */
+data class HourlyUsage(
+    val hour: Int,
+    val usageMillis: Long,
+)

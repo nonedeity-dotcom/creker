@@ -81,10 +81,11 @@ fun StatsScreen(
                 modifier = Modifier.padding(top = 8.dp),
             )
 
-            TotalTimeCard(
+            UsageOverviewCard(
                 totalMillis = state.totalMillis,
                 range = state.range,
                 appCount = state.apps.size,
+                chartPoints = state.chartPoints,
                 modifier = Modifier.padding(all = 16.dp),
             )
 
@@ -123,7 +124,7 @@ fun StatsScreen(
                         items(items = state.apps, key = { it.packageName }) { app ->
                             AppUsageRow(app)
                             HorizontalDivider(
-                                modifier = Modifier.padding(start = 70.dp),
+                                modifier = Modifier.padding(start = 74.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                             )
                         }

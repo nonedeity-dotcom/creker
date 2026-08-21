@@ -25,8 +25,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.DurationFormatter
+import java.util.Locale
 
-/** Icon, name, time as чч:мм:сс, and a bar showing the share of the busiest app. */
+/** Icon, name, time as чч:мм:сс with its share of the total, and a usage bar. */
 @Composable
 fun AppUsageRow(
     app: AppUsageUi,
@@ -35,7 +36,7 @@ fun AppUsageRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val icon = app.icon
@@ -44,14 +45,14 @@ fun AppUsageRow(
                 bitmap = icon,
                 contentDescription = stringResource(R.string.app_icon_description, app.label),
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp)),
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp)),
             )
         } else {
             Icon(
                 imageVector = Icons.Rounded.Android,
                 contentDescription = null,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(44.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -74,11 +75,18 @@ fun AppUsageRow(
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = DurationFormatter.format(app.usageMillis),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = DurationFormatter.format(app.usageMillis),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = formatPercent(app.shareOfTotal),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             LinearProgressIndicator(
@@ -90,3 +98,6 @@ fun AppUsageRow(
         }
     }
 }
+
+private fun formatPercent(share: Float): String =
+    String.format(Locale.ROOT, "%.1f%%", share * 100).replace('.', ',')
