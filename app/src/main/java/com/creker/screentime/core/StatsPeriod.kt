@@ -17,7 +17,8 @@ data class DayRange(val from: LocalDate, val to: LocalDate) {
 /** The period selector at the top of the screen. */
 sealed interface StatsPeriod {
 
-    data object Today : StatsPeriod
+    /** The current day. */
+    data object Day : StatsPeriod
 
     /** Rolling seven days, today included. */
     data object Week : StatsPeriod
@@ -28,7 +29,7 @@ sealed interface StatsPeriod {
     data class Custom(val from: LocalDate, val to: LocalDate) : StatsPeriod
 
     fun resolve(today: LocalDate): DayRange = when (this) {
-        Today -> DayRange(today, today)
+        Day -> DayRange(today, today)
         Week -> DayRange(today.minusDays(WEEK_DAYS - 1L), today)
         Month -> DayRange(today.minusDays(MONTH_DAYS - 1L), today)
         // A user can pick the dates in any order; normalise instead of showing nothing.

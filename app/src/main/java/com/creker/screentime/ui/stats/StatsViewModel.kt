@@ -30,7 +30,7 @@ class StatsViewModel(
     private val appInfoProvider: AppInfoProvider,
 ) : ViewModel() {
 
-    private val period = MutableStateFlow<StatsPeriod>(StatsPeriod.Today)
+    private val period = MutableStateFlow<StatsPeriod>(StatsPeriod.Day)
     private val refreshing = MutableStateFlow(false)
 
     /**
@@ -58,7 +58,7 @@ class StatsViewModel(
             StatsUiState(
                 period = current.period,
                 range = current.range,
-                totalTimeMs = current.rows.sumOf { it.foregroundTimeMs },
+                totalMillis = current.rows.sumOf { it.usageMillis },
                 apps = current.rows.toUiRows(),
                 earliestStoredDay = earliest,
                 isInitialLoading = false,
@@ -96,16 +96,15 @@ class StatsViewModel(
     }
 
     private fun List<AppUsageTotal>.toUiRows(): List<AppUsageUi> {
-        val top = maxOfOrNull { it.foregroundTimeMs } ?: 0L
+        val top = maxOfOrNull { it.usageMillis } ?: 0L
         return map { total ->
             val info = appInfoProvider.get(total.packageName)
             AppUsageUi(
                 packageName = total.packageName,
                 label = info.label,
                 icon = info.icon,
-                foregroundTimeMs = total.foregroundTimeMs,
-                launchCount = total.launchCount,
-                shareOfTop = if (top > 0L) total.foregroundTimeMs.toFloat() / top else 0f,
+                usageMillis = total.usageMillis,
+                shareOfTop = if (top > 0L) total.usageMillis.toFloat() / top else 0f,
             )
         }
     }

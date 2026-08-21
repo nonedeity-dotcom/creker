@@ -33,9 +33,9 @@ fun PeriodSelector(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         PeriodChip(
-            text = stringResource(R.string.period_today),
-            selected = selected is StatsPeriod.Today,
-            onClick = { onSelect(StatsPeriod.Today) },
+            text = stringResource(R.string.period_day),
+            selected = selected is StatsPeriod.Day,
+            onClick = { onSelect(StatsPeriod.Day) },
         )
         PeriodChip(
             text = stringResource(R.string.period_week),

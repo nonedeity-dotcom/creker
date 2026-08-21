@@ -6,48 +6,46 @@ import java.util.concurrent.TimeUnit
 
 class DurationFormatterTest {
 
-    private val labels = DurationLabels(hours = "ч", minutes = "мин", seconds = "сек")
-
     @Test
-    fun `formats hours minutes and seconds`() {
+    fun `formats as hh mm ss`() {
         val duration = TimeUnit.HOURS.toMillis(2) +
             TimeUnit.MINUTES.toMillis(15) +
             TimeUnit.SECONDS.toMillis(40)
 
-        assertEquals("2ч 15мин 40сек", DurationFormatter.formatHms(duration, labels))
+        assertEquals("02:15:40", DurationFormatter.format(duration))
     }
 
     @Test
-    fun `drops the hours when there are none`() {
-        val duration = TimeUnit.MINUTES.toMillis(15) + TimeUnit.SECONDS.toMillis(40)
+    fun `pads every component to two digits`() {
+        val duration = TimeUnit.HOURS.toMillis(1) +
+            TimeUnit.MINUTES.toMillis(2) +
+            TimeUnit.SECONDS.toMillis(3)
 
-        assertEquals("15мин 40сек", DurationFormatter.formatHms(duration, labels))
+        assertEquals("01:02:03", DurationFormatter.format(duration))
     }
 
     @Test
-    fun `keeps seconds only for very short usage`() {
-        assertEquals("40сек", DurationFormatter.formatHms(TimeUnit.SECONDS.toMillis(40), labels))
+    fun `keeps zeroed components visible`() {
+        assertEquals("00:00:40", DurationFormatter.format(TimeUnit.SECONDS.toMillis(40)))
+        assertEquals("00:15:00", DurationFormatter.format(TimeUnit.MINUTES.toMillis(15)))
     }
 
     @Test
-    fun `keeps zero minutes visible when hours are present`() {
-        val duration = TimeUnit.HOURS.toMillis(3) + TimeUnit.SECONDS.toMillis(5)
+    fun `does not wrap hours at a day`() {
+        val duration = TimeUnit.HOURS.toMillis(127) +
+            TimeUnit.MINUTES.toMillis(45) +
+            TimeUnit.SECONDS.toMillis(10)
 
-        assertEquals("3ч 0мин 5сек", DurationFormatter.formatHms(duration, labels))
+        assertEquals("127:45:10", DurationFormatter.format(duration))
     }
 
     @Test
     fun `truncates sub-second remainders instead of rounding up`() {
-        assertEquals("1сек", DurationFormatter.formatHms(1_999L, labels))
+        assertEquals("00:00:01", DurationFormatter.format(1_999L))
     }
 
     @Test
     fun `treats negative durations as zero`() {
-        assertEquals("0сек", DurationFormatter.formatHms(-5_000L, labels))
-    }
-
-    @Test
-    fun `formats long durations without capping the hours`() {
-        assertEquals("30ч 0мин 0сек", DurationFormatter.formatHms(TimeUnit.HOURS.toMillis(30), labels))
+        assertEquals("00:00:00", DurationFormatter.format(-5_000L))
     }
 }

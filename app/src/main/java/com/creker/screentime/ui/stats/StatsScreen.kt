@@ -82,7 +82,7 @@ fun StatsScreen(
             )
 
             TotalTimeCard(
-                totalTimeMs = state.totalTimeMs,
+                totalMillis = state.totalMillis,
                 range = state.range,
                 appCount = state.apps.size,
                 modifier = Modifier.padding(all = 16.dp),

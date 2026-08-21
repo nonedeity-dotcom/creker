@@ -12,38 +12,36 @@ abstract class UsageDao {
 
     @Query(
         """
-        SELECT packageName,
-               SUM(foregroundTimeMs) AS foregroundTimeMs,
-               SUM(launchCount) AS launchCount
-        FROM usage_day
-        WHERE dayEpoch BETWEEN :fromDayEpoch AND :toDayEpoch
-        GROUP BY packageName
-        HAVING SUM(foregroundTimeMs) > 0
-        ORDER BY foregroundTimeMs DESC
+        SELECT package_name, SUM(usage_millis) AS usage_millis
+        FROM app_usage
+        WHERE date BETWEEN :fromDate AND :toDate
+        GROUP BY package_name
+        HAVING SUM(usage_millis) > 0
+        ORDER BY usage_millis DESC
         """
     )
-    abstract fun observeTotals(fromDayEpoch: Long, toDayEpoch: Long): Flow<List<PackageTotalRow>>
+    abstract fun observeTotals(fromDate: String, toDate: String): Flow<List<PackageTotalRow>>
 
-    /** Earliest day the database holds, used to warn about the missing history. */
-    @Query("SELECT MIN(dayEpoch) FROM usage_day")
-    abstract fun observeEarliestDay(): Flow<Long?>
+    /** Earliest day the database holds, used to explain a still-short history. */
+    @Query("SELECT MIN(date) FROM app_usage")
+    abstract fun observeEarliestDate(): Flow<String?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    abstract suspend fun insertAll(rows: List<UsageDayEntity>)
+    abstract suspend fun insertAll(rows: List<AppUsageEntity>)
 
-    @Query("DELETE FROM usage_day WHERE dayEpoch BETWEEN :fromDayEpoch AND :toDayEpoch")
-    abstract suspend fun deleteRange(fromDayEpoch: Long, toDayEpoch: Long)
+    @Query("DELETE FROM app_usage WHERE date BETWEEN :fromDate AND :toDate")
+    abstract suspend fun deleteRange(fromDate: String, toDate: String)
 
-    @Query("DELETE FROM usage_day WHERE dayEpoch < :dayEpoch")
-    abstract suspend fun deleteBefore(dayEpoch: Long)
+    @Query("DELETE FROM app_usage WHERE date < :date")
+    abstract suspend fun deleteBefore(date: String)
 
     /**
      * Replaces a whole span of days at once. Days are recomputed rather than
      * incremented, which keeps repeated syncs of the same window idempotent.
      */
     @Transaction
-    open suspend fun replaceDays(fromDayEpoch: Long, toDayEpoch: Long, rows: List<UsageDayEntity>) {
-        deleteRange(fromDayEpoch, toDayEpoch)
+    open suspend fun replaceDays(fromDate: String, toDate: String, rows: List<AppUsageEntity>) {
+        deleteRange(fromDate, toDate)
         if (rows.isNotEmpty()) insertAll(rows)
     }
 }

@@ -11,8 +11,8 @@ class StatsPeriodTest {
     private val zone: ZoneId = ZoneId.of("Europe/Moscow")
 
     @Test
-    fun `today covers a single day`() {
-        val range = StatsPeriod.Today.resolve(today)
+    fun `day covers a single day`() {
+        val range = StatsPeriod.Day.resolve(today)
 
         assertEquals(DayRange(today, today), range)
         assertEquals(1, range.dayCount)
@@ -49,7 +49,7 @@ class StatsPeriodTest {
 
     @Test
     fun `range boundaries span from midnight to the next midnight`() {
-        val range = StatsPeriod.Today.resolve(today)
+        val range = StatsPeriod.Day.resolve(today)
 
         val expectedStart = today.atStartOfDay(zone).toInstant().toEpochMilli()
         val expectedEnd = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()

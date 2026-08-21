@@ -3,10 +3,10 @@ package com.creker.screentime.data
 import com.creker.screentime.core.AppUsageTotal
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.ForegroundSessionBuilder
+import com.creker.screentime.data.local.AppUsageEntity
 import com.creker.screentime.data.local.SyncStateDao
 import com.creker.screentime.data.local.SyncStateEntity
 import com.creker.screentime.data.local.UsageDao
-import com.creker.screentime.data.local.UsageDayEntity
 import com.creker.screentime.data.system.SystemUsageEventSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -36,20 +36,20 @@ class UsageRepository(
     fun today(): LocalDate = LocalDate.now(clock)
 
     fun observeTotals(range: DayRange): Flow<List<AppUsageTotal>> =
-        usageDao.observeTotals(range.from.toEpochDay(), range.to.toEpochDay())
-            .map { rows ->
-                rows.map { AppUsageTotal(it.packageName, it.foregroundTimeMs, it.launchCount) }
-            }
+        usageDao.observeTotals(range.from.toString(), range.to.toString())
+            .map { rows -> rows.map { AppUsageTotal(it.packageName, it.usageMillis) } }
 
     /** Earliest day the local history covers, or `null` while it is still empty. */
     fun observeEarliestDay(): Flow<LocalDate?> =
-        usageDao.observeEarliestDay().map { epochDay -> epochDay?.let(LocalDate::ofEpochDay) }
+        usageDao.observeEarliestDate().map { date -> date?.let(LocalDate::parse) }
 
     /**
      * Pulls everything the system still remembers into the local database.
      *
-     * Only days that can be fully re-derived are touched: older rows were written by
-     * earlier syncs and the system no longer has the events to rebuild them.
+     * On a first run this imports the whole retention window, which is the last seven
+     * days. Afterwards only days that can still be fully re-derived are touched: older
+     * rows were written by earlier syncs and the system no longer has the events to
+     * rebuild them.
      */
     suspend fun sync(): SyncResult = withContext(ioDispatcher) {
         val zone = clock.zone
@@ -57,7 +57,7 @@ class UsageRepository(
         val today = LocalDate.now(clock)
 
         val lastSyncedAtMs = syncStateDao.get()?.lastSyncedAtMs ?: 0L
-        val earliestRebuildableDay = today.minusDays(EVENT_RETENTION_DAYS)
+        val earliestRebuildableDay = today.minusDays(IMPORT_WINDOW_DAYS)
         val lastSyncedDay = if (lastSyncedAtMs > 0L) {
             Instant.ofEpochMilli(lastSyncedAtMs).atZone(zone).toLocalDate()
         } else {
@@ -81,30 +81,23 @@ class UsageRepository(
             rangeEndMs = nowMs,
             nowMs = nowMs,
         )
-        val launches = ForegroundSessionBuilder.countLaunches(
-            events = events,
-            rangeStartMs = windowStartMs,
-            rangeEndMs = nowMs,
-            zone = zone,
-        )
-        val rows = ForegroundSessionBuilder.toDailyUsage(intervals, zone, launches)
+        val rows = ForegroundSessionBuilder.toDailyUsage(intervals, zone)
             .map { usage ->
-                UsageDayEntity(
-                    dayEpoch = usage.day.toEpochDay(),
+                AppUsageEntity(
                     packageName = usage.packageName,
-                    foregroundTimeMs = usage.foregroundTimeMs,
-                    launchCount = usage.launchCount,
+                    date = usage.day.toString(),
+                    usageMillis = usage.usageMillis,
                 )
             }
 
-        usageDao.replaceDays(firstDay.toEpochDay(), today.toEpochDay(), rows)
-        usageDao.deleteBefore(today.minusDays(HISTORY_RETENTION_DAYS).toEpochDay())
+        usageDao.replaceDays(firstDay.toString(), today.toString(), rows)
+        usageDao.deleteBefore(today.minusDays(HISTORY_RETENTION_DAYS).toString())
         syncStateDao.put(SyncStateEntity(lastSyncedAtMs = nowMs))
 
         SyncResult(
             from = firstDay,
             to = today,
-            daysWritten = rows.map { it.dayEpoch }.distinct().size,
+            daysWritten = rows.map { it.date }.distinct().size,
             eventCount = events.size,
         )
     }
@@ -117,8 +110,11 @@ class UsageRepository(
     )
 
     private companion object {
-        /** How far back the system keeps detailed events, conservatively. */
-        const val EVENT_RETENTION_DAYS = 7L
+        /**
+         * How far back the system keeps detailed events, conservatively — and so also
+         * how much history the very first run can import.
+         */
+        const val IMPORT_WINDOW_DAYS = 7L
 
         /** How much local history to keep before pruning. */
         const val HISTORY_RETENTION_DAYS = 400L

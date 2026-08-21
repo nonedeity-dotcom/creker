@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [UsageDayEntity::class, SyncStateEntity::class],
+    entities = [AppUsageEntity::class, SyncStateEntity::class],
     version = 1,
     exportSchema = true,
 )

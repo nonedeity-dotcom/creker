@@ -10,13 +10,13 @@
     <string name="permission_settings_missing">Не удалось открыть системный экран. Откройте Настройки → Приложения → Специальный доступ → Доступ к данным об использовании.</string>
 
     <!-- Periods -->
-    <string name="period_today">Сегодня</string>
+    <string name="period_day">День</string>
     <string name="period_week">Неделя</string>
     <string name="period_month">Месяц</string>
     <string name="period_custom">Свой период</string>
 
     <!-- Stats screen -->
-    <string name="total_screen_time">Общее экранное время</string>
+    <string name="total_screen_time">Общее время экрана</string>
     <string name="apps_count">Приложений: %1$d</string>
     <string name="sorted_by_usage">От самого используемого к наименее используемому</string>
     <string name="refresh">Обновить</string>
@@ -24,7 +24,6 @@
     <string name="empty_body">За выбранный период система не сообщила об использовании приложений.</string>
     <string name="loading">Загружаем статистику…</string>
     <string name="history_notice">История ведётся с %1$s: Android хранит подробные события всего несколько дней, более ранние дни появятся по мере работы приложения.</string>
-    <string name="launches_count">Запусков: %1$d</string>
     <string name="app_icon_description">Иконка приложения %1$s</string>
 
     <!-- Custom range picker -->
@@ -33,9 +32,4 @@
     <string name="range_picker_dismiss">Отмена</string>
     <string name="range_single_day">%1$s</string>
     <string name="range_days">%1$s — %2$s</string>
-
-    <!-- Duration formatting: "2ч 15мин 40сек" -->
-    <string name="duration_hours_suffix">ч</string>
-    <string name="duration_minutes_suffix">мин</string>
-    <string name="duration_seconds_suffix">сек</string>
 </resources>

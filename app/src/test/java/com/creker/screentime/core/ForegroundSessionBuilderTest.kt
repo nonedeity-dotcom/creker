@@ -119,9 +119,9 @@ class ForegroundSessionBuilderTest {
 
         assertEquals(2, daily.size)
         assertEquals(LocalDate.of(2026, 8, 19), daily[0].day)
-        assertEquals(TimeUnit.MINUTES.toMillis(20), daily[0].foregroundTimeMs)
+        assertEquals(TimeUnit.MINUTES.toMillis(20), daily[0].usageMillis)
         assertEquals(LocalDate.of(2026, 8, 20), daily[1].day)
-        assertEquals(TimeUnit.MINUTES.toMillis(20), daily[1].foregroundTimeMs)
+        assertEquals(TimeUnit.MINUTES.toMillis(20), daily[1].usageMillis)
     }
 
     @Test
@@ -135,42 +135,8 @@ class ForegroundSessionBuilderTest {
         val daily = ForegroundSessionBuilder.toDailyUsage(intervals, zone)
 
         val chat = daily.single { it.packageName == "com.chat" }
-        assertEquals(TimeUnit.MINUTES.toMillis(7) + TimeUnit.SECONDS.toMillis(30), chat.foregroundTimeMs)
+        assertEquals(TimeUnit.MINUTES.toMillis(7) + TimeUnit.SECONDS.toMillis(30), chat.usageMillis)
         assertEquals(LocalDate.of(2026, 8, 20), chat.day)
-    }
-
-    @Test
-    fun `launches are counted per day and package`() {
-        val events = listOf(
-            event("com.chat", "2026-08-20T10:00:00", RawUsageEventType.FOREGROUND),
-            event("com.chat", "2026-08-20T11:00:00", RawUsageEventType.FOREGROUND),
-            event("com.chat", "2026-08-20T11:30:00", RawUsageEventType.BACKGROUND),
-        )
-
-        val launches = ForegroundSessionBuilder.countLaunches(
-            events = events,
-            rangeStartMs = at("2026-08-20T00:00:00"),
-            rangeEndMs = at("2026-08-21T00:00:00"),
-            zone = zone,
-        )
-
-        assertEquals(2, launches[LocalDate.of(2026, 8, 20) to "com.chat"])
-    }
-
-    @Test
-    fun `events outside the window do not count as launches`() {
-        val events = listOf(
-            event("com.chat", "2026-08-19T23:00:00", RawUsageEventType.FOREGROUND),
-        )
-
-        val launches = ForegroundSessionBuilder.countLaunches(
-            events = events,
-            rangeStartMs = at("2026-08-20T00:00:00"),
-            rangeEndMs = at("2026-08-21T00:00:00"),
-            zone = zone,
-        )
-
-        assertTrue(launches.isEmpty())
     }
 
     @Test

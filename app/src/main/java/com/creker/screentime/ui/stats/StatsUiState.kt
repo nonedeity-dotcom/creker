@@ -10,16 +10,15 @@ data class AppUsageUi(
     val packageName: String,
     val label: String,
     val icon: ImageBitmap?,
-    val foregroundTimeMs: Long,
-    val launchCount: Int,
+    val usageMillis: Long,
     /** Share of the most-used app's time, used for the bar width. */
     val shareOfTop: Float,
 )
 
 data class StatsUiState(
-    val period: StatsPeriod = StatsPeriod.Today,
+    val period: StatsPeriod = StatsPeriod.Day,
     val range: DayRange = DayRange(LocalDate.now(), LocalDate.now()),
-    val totalTimeMs: Long = 0L,
+    val totalMillis: Long = 0L,
     val apps: List<AppUsageUi> = emptyList(),
     /** First day the local history covers, `null` until anything is stored. */
     val earliestStoredDay: LocalDate? = null,

@@ -10,20 +10,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.DayRange
+import com.creker.screentime.core.DurationFormatter
 
-/** The headline number: total screen time over the selected period. */
+/** The headline number: total screen time over the selected period, as чч:мм:сс. */
 @Composable
 fun TotalTimeCard(
-    totalTimeMs: Long,
+    totalMillis: Long,
     range: DayRange,
     appCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val labels = rememberDurationLabels()
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -41,8 +40,8 @@ fun TotalTimeCard(
                 style = MaterialTheme.typography.labelLarge,
             )
             Text(
-                text = formatDuration(totalTimeMs, labels),
-                style = MaterialTheme.typography.displaySmall,
+                text = DurationFormatter.format(totalMillis),
+                style = MaterialTheme.typography.displayMedium,
                 modifier = Modifier.padding(top = 6.dp),
             )
             Text(
@@ -53,7 +52,6 @@ fun TotalTimeCard(
             Text(
                 text = stringResource(R.string.apps_count, appCount),
                 style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Start,
             )
         }
     }

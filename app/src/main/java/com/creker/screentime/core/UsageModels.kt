@@ -43,13 +43,11 @@ data class UsageInterval(
 data class DailyUsage(
     val day: LocalDate,
     val packageName: String,
-    val foregroundTimeMs: Long,
-    val launchCount: Int,
+    val usageMillis: Long,
 )
 
 /** Total usage of one package over the selected period. */
 data class AppUsageTotal(
     val packageName: String,
-    val foregroundTimeMs: Long,
-    val launchCount: Int,
+    val usageMillis: Long,
 )

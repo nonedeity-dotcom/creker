@@ -24,18 +24,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
+import com.creker.screentime.core.DurationFormatter
 
-/** Icon, name, time and a bar showing the app's share of the busiest app's time. */
+/** Icon, name, time as чч:мм:сс, and a bar showing the share of the busiest app. */
 @Composable
 fun AppUsageRow(
     app: AppUsageUi,
     modifier: Modifier = Modifier,
 ) {
-    val labels = rememberDurationLabels()
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val icon = app.icon
@@ -60,7 +60,7 @@ fun AppUsageRow(
 
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -75,7 +75,7 @@ fun AppUsageRow(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = formatDuration(app.foregroundTimeMs, labels),
+                    text = DurationFormatter.format(app.usageMillis),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -87,14 +87,6 @@ fun AppUsageRow(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(4.dp)),
             )
-
-            if (app.launchCount > 0) {
-                Text(
-                    text = stringResource(R.string.launches_count, app.launchCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 }

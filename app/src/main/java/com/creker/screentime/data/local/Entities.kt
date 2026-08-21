@@ -1,5 +1,6 @@
 package com.creker.screentime.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -10,13 +11,12 @@ import androidx.room.PrimaryKey
  * mirrors what it reads into this table. Everything the UI shows for longer periods
  * comes from here, and nothing ever leaves the device.
  */
-@Entity(tableName = "usage_day", primaryKeys = ["dayEpoch", "packageName"])
-data class UsageDayEntity(
-    /** Day as [java.time.LocalDate.toEpochDay] in the device time zone. */
-    val dayEpoch: Long,
-    val packageName: String,
-    val foregroundTimeMs: Long,
-    val launchCount: Int,
+@Entity(tableName = "app_usage", primaryKeys = ["package_name", "date"])
+data class AppUsageEntity(
+    @ColumnInfo(name = "package_name") val packageName: String,
+    /** Calendar day in the device time zone, ISO `yyyy-MM-dd`. */
+    @ColumnInfo(name = "date") val date: String,
+    @ColumnInfo(name = "usage_millis") val usageMillis: Long,
 )
 
 /** Single-row table remembering how far the event stream has been consumed. */
@@ -32,7 +32,6 @@ data class SyncStateEntity(
 
 /** Aggregated result of a group-by query. */
 data class PackageTotalRow(
-    val packageName: String,
-    val foregroundTimeMs: Long,
-    val launchCount: Int,
+    @ColumnInfo(name = "package_name") val packageName: String,
+    @ColumnInfo(name = "usage_millis") val usageMillis: Long,
 )
