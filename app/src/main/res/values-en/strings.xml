@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Screen Time</string>
+    <string name="app_name">Creker</string>
 
     <string name="permission_title">Usage access is required</string>
     <string name="permission_body">This app measures screen time locally, through an Android system service. To read that data, turn on “Usage access” for this app.\n\nNothing is uploaded anywhere — all data stays on your device.</string>

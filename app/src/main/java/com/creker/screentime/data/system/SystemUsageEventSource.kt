@@ -22,7 +22,12 @@ class SystemUsageEventSource(private val context: Context) {
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             val type = event.eventType.toRawType() ?: continue
-            val packageName = event.packageName ?: continue
+            // Screen and keyguard events describe the device, not an app, and some
+            // builds report them with no package at all. Dropping those left screen
+            // time permanently empty, so they get a stand-in name instead — nothing
+            // downstream reads the package of a device-wide event.
+            val packageName = event.packageName
+                ?: if (type.isDeviceWide) DEVICE else continue
             result += RawUsageEvent(packageName, event.timeStamp, type)
         }
         result.sortBy { it.timestampMs }
@@ -42,7 +47,17 @@ class SystemUsageEventSource(private val context: Context) {
         else -> null
     }
 
+    private val RawUsageEventType.isDeviceWide: Boolean
+        get() = this == RawUsageEventType.SCREEN_ON ||
+            this == RawUsageEventType.SCREEN_OFF ||
+            this == RawUsageEventType.KEYGUARD_SHOWN ||
+            this == RawUsageEventType.KEYGUARD_HIDDEN ||
+            this == RawUsageEventType.SHUTDOWN
+
     private companion object {
+        /** Stand-in package for events that belong to the device rather than an app. */
+        const val DEVICE = "android"
+
         /**
          * Declared as literals because the matching constants were added in later API
          * levels than the app's minimum; the numeric values are part of the platform

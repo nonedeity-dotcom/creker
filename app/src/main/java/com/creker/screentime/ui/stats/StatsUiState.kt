@@ -23,8 +23,6 @@ data class StatsUiState(
     val range: DayRange = DayRange(LocalDate.now(), LocalDate.now()),
     /** False once stepping forward would move the range's end past today. */
     val canGoForward: Boolean = false,
-    /** Total app-usage time for the period — always usage time, regardless of [metric]. */
-    val totalMillis: Long = 0L,
     val apps: List<AppUsageUi> = emptyList(),
     val chartPoints: List<ChartPoint> = emptyList(),
     /** First day the local history covers, `null` until anything is stored. */

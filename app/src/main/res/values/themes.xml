@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.CrekerScreenTime" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Only the launch window: everything after first frame is drawn by Compose.
+         The background matches the Compose palette so there is no pale flash first. -->
+    <style name="Theme.CrekerScreenTime" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

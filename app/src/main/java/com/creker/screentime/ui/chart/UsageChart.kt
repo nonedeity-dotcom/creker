@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.ShowChart
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -56,11 +57,16 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.creker.screentime.R
+import androidx.compose.ui.unit.sp
 import com.creker.screentime.core.ChartMetric
+import com.creker.screentime.ui.theme.MonoNumeric
 import kotlinx.coroutines.launch
 
 enum class ChartMode { Bar, Line }
@@ -68,7 +74,8 @@ enum class ChartMode { Bar, Line }
 private const val GRID_LINE_COUNT = 3
 private const val MAX_ZOOM = 4f
 private val TOOLTIP_WIDTH = 132.dp
-private val BASE_CHART_HEIGHT = 150.dp
+private val PLOT_HEIGHT = 150.dp
+private val AXIS_HEIGHT = 18.dp
 
 /** Bar / line switch, shown next to a chart's headline. */
 @Composable
@@ -76,8 +83,8 @@ fun ChartModeToggle(mode: ChartMode, onModeChange: (ChartMode) -> Unit, modifier
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-            .padding(2.dp),
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f))
+            .padding(3.dp),
     ) {
         ChartModeButton(Icons.Rounded.BarChart, selected = mode == ChartMode.Bar) { onModeChange(ChartMode.Bar) }
         ChartModeButton(Icons.Rounded.ShowChart, selected = mode == ChartMode.Line) { onModeChange(ChartMode.Line) }
@@ -115,20 +122,38 @@ fun MetricSelector(selected: ChartMetric, onSelect: (ChartMetric) -> Unit, modif
 
 @Composable
 private fun MetricChip(metric: ChartMetric, icon: ImageVector, selected: ChartMetric, onSelect: (ChartMetric) -> Unit) {
+    val isSelected = metric == selected
     FilterChip(
-        selected = metric == selected,
+        selected = isSelected,
         onClick = { onSelect(metric) },
         label = { Text(stringResource(metric.chipLabelRes)) },
         leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        // The chips sit on the warm headline panel, so they take their colours from it
+        // rather than from the default surface palette, which washed out against it.
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = Color.Transparent,
+            labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            leadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = isSelected,
+            borderColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f),
+            selectedBorderColor = Color.Transparent,
+        ),
     )
 }
 
 /**
  * A bar or filled-line chart, pinch-zoomable and pannable in both directions — wider
  * to spread out crowded points (a day's 24 hours), taller to make close bar heights
- * easier to tell apart. Per the mode: bar mode always labels every bar's value; line
- * mode reveals a value on tap instead, since a label per point would be unreadable on
- * a smooth curve.
+ * easier to tell apart.
+ *
+ * Bars carry their value above them; the line reveals one on tap instead, since a
+ * label per point would be unreadable along a curve.
  */
 @Composable
 fun UsageChart(
@@ -151,13 +176,27 @@ fun UsageChart(
     }
 
     val barColor = MaterialTheme.colorScheme.primary
-    val fillColor = barColor.copy(alpha = 0.20f)
-    val gridColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
+    val fillColor = barColor.copy(alpha = 0.18f)
+    val gridColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.13f)
+    val valueColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val axisColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f)
     val maxValue = (points.maxOfOrNull { it.value } ?: 0L).coerceAtLeast(1L)
 
-    BoxWithConstraints(modifier = modifier.transformable(transformState)) {
+    val measurer = rememberTextMeasurer()
+    val valueStyle = TextStyle(
+        fontFamily = MonoNumeric,
+        fontSize = 9.sp,
+        color = valueColor,
+    )
+
+    BoxWithConstraints(
+        // The viewport stays put; only the content inside it grows with zoom.
+        modifier = modifier
+            .fillMaxWidth()
+            .height(PLOT_HEIGHT + AXIS_HEIGHT + 6.dp)
+            .transformable(transformState),
+    ) {
         val contentWidth = maxWidth * zoom
-        val chartHeight = BASE_CHART_HEIGHT * zoom
         Box(
             modifier = Modifier
                 .horizontalScroll(horizontalScrollState, enabled = false)
@@ -167,7 +206,7 @@ fun UsageChart(
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(chartHeight)
+                        .height(PLOT_HEIGHT * zoom)
                         .pointerInput(points, mode) {
                             if (mode != ChartMode.Line) return@pointerInput
                             detectTapGestures { offset ->
@@ -183,41 +222,71 @@ fun UsageChart(
                         drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
                     }
                     when (mode) {
-                        ChartMode.Bar -> drawBars(points, maxValue, barColor)
+                        ChartMode.Bar -> drawBars(points, maxValue, barColor, measurer, valueStyle, formatValue)
                         ChartMode.Line -> drawLineArea(points, maxValue, barColor, fillColor)
                     }
                 }
-                if (mode == ChartMode.Bar) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    BarValueLabels(points, formatValue)
-                }
                 Spacer(modifier = Modifier.height(6.dp))
-                ChartAxisLabels(points)
+                ChartAxisLabels(points, axisColor)
             }
 
             val index = tappedIndex
             if (index != null && index < points.size) {
-                ChartTooltip(point = points[index], index = index, pointCount = points.size, contentWidth = contentWidth, formatValue = formatValue)
+                ChartTooltip(
+                    point = points[index],
+                    index = index,
+                    pointCount = points.size,
+                    contentWidth = contentWidth,
+                    formatValue = formatValue,
+                )
             }
         }
     }
 }
 
-private fun DrawScope.drawBars(points: List<ChartPoint>, maxValue: Long, color: Color) {
+private fun DrawScope.drawBars(
+    points: List<ChartPoint>,
+    maxValue: Long,
+    color: Color,
+    measurer: TextMeasurer,
+    valueStyle: TextStyle,
+    formatValue: (Long) -> String,
+) {
     if (points.isEmpty()) return
     val slotWidth = size.width / points.size
-    val barWidth = (slotWidth * 0.55f).coerceAtLeast(2.dp.toPx())
-    // Square-cornered bars — a small radius just to soften the top edge, not a pill shape.
-    val corner = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+    val barWidth = (slotWidth * 0.6f).coerceAtLeast(2.dp.toPx())
+    // Room above the tallest bar for its own label.
+    val labelInset = 16.dp.toPx()
+    val plotHeight = (size.height - labelInset).coerceAtLeast(1f)
+    val corner = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+
     points.forEachIndexed { index, point ->
-        val barHeight = (size.height * point.value.toFloat() / maxValue).coerceAtLeast(2.dp.toPx())
+        // An hour with no usage gets no bar at all. Drawing a minimum-height stub for
+        // it left a row of dashes along the baseline that read as data.
+        if (point.value <= 0L) return@forEachIndexed
+
+        val barHeight = (plotHeight * point.value.toFloat() / maxValue).coerceAtLeast(2.dp.toPx())
         val left = slotWidth * index + (slotWidth - barWidth) / 2f
+        val top = size.height - barHeight
         drawRoundRect(
             color = color,
-            topLeft = Offset(left, size.height - barHeight),
+            topLeft = Offset(left, top),
             size = Size(barWidth, barHeight),
             cornerRadius = corner,
         )
+
+        val label = measurer.measure(formatValue(point.value), valueStyle)
+        // Only label a bar when the slot is actually wide enough to hold the text —
+        // otherwise neighbouring labels overlap into noise. Zooming in reveals them.
+        if (label.size.width <= slotWidth) {
+            drawText(
+                textLayoutResult = label,
+                topLeft = Offset(
+                    x = left + (barWidth - label.size.width) / 2f,
+                    y = (top - label.size.height - 2.dp.toPx()).coerceAtLeast(0f),
+                ),
+            )
+        }
     }
 }
 
@@ -250,32 +319,16 @@ private fun DrawScope.drawLineArea(points: List<ChartPoint>, maxValue: Long, lin
     coordinates.forEach { drawCircle(color = lineColor, radius = 3.dp.toPx(), center = it) }
 }
 
-@Composable
-private fun BarValueLabels(points: List<ChartPoint>, formatValue: (Long) -> String) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        points.forEach { point ->
-            Text(
-                text = if (point.value > 0L) formatValue(point.value) else "",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
 /** One label per point, always — zooming in gives each one the room it needs. */
 @Composable
-private fun ChartAxisLabels(points: List<ChartPoint>) {
+private fun ChartAxisLabels(points: List<ChartPoint>, color: Color) {
     if (points.isEmpty()) return
     Row(modifier = Modifier.fillMaxWidth()) {
         points.forEach { point ->
             Text(
                 text = point.label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                color = color,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 modifier = Modifier.weight(1f),
@@ -285,7 +338,13 @@ private fun ChartAxisLabels(points: List<ChartPoint>) {
 }
 
 @Composable
-private fun ChartTooltip(point: ChartPoint, index: Int, pointCount: Int, contentWidth: Dp, formatValue: (Long) -> String) {
+private fun ChartTooltip(
+    point: ChartPoint,
+    index: Int,
+    pointCount: Int,
+    contentWidth: Dp,
+    formatValue: (Long) -> String,
+) {
     val slotWidth = contentWidth / pointCount
     val x = (slotWidth * index).coerceAtMost((contentWidth - TOOLTIP_WIDTH).coerceAtLeast(0.dp))
     Surface(
@@ -301,11 +360,11 @@ private fun ChartTooltip(point: ChartPoint, index: Int, pointCount: Int, content
             Text(
                 text = point.detailLabel,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.75f),
             )
             Text(
                 text = formatValue(point.value),
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoNumeric),
                 color = MaterialTheme.colorScheme.inverseOnSurface,
             )
         }

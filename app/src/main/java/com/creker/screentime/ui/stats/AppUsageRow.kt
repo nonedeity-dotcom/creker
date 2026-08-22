@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,11 +22,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.DurationFormatter
+import com.creker.screentime.ui.theme.MonoNumeric
 import java.util.Locale
 
 /** Icon, name, time as чч:мм:сс with its share of the total, and a usage bar. Tap for details. */
@@ -81,12 +84,14 @@ fun AppUsageRow(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = DurationFormatter.format(app.usageMillis),
-                        style = MaterialTheme.typography.titleSmall,
+                        // Monospaced so the times line up as a column down the list
+                        // instead of drifting with each row's digits.
+                        style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoNumeric),
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
                         text = formatPercent(app.shareOfTotal),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoNumeric),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -94,9 +99,14 @@ fun AppUsageRow(
 
             LinearProgressIndicator(
                 progress = { app.shareOfTop.coerceIn(0f, 1f) },
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(4.dp)),
+                    .height(4.dp),
             )
         }
     }

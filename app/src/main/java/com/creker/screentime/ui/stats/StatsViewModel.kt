@@ -104,7 +104,6 @@ class StatsViewModel(
                 metric = data.metric,
                 range = data.range,
                 canGoForward = !data.range.shiftBy(data.range.dayCount).to.isAfter(today),
-                totalMillis = data.rows.sumOf { it.usageMillis },
                 apps = data.rows.toUiRows(),
                 chartPoints = data.chartPoints,
                 earliestStoredDay = earliest,

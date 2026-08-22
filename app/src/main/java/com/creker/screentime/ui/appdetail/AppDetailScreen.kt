@@ -123,6 +123,14 @@ fun AppDetailScreen(
                     onMetricChange = onSelectMetric,
                     chartPoints = state.chartPoints,
                     modifier = Modifier.padding(horizontal = 16.dp),
+                    // On this screen the usage and session figures are this one app's,
+                    // not the device's, so the panel says so. Screen time is the
+                    // exception: it is device-wide wherever it is shown.
+                    headlineLabel = when (state.metric) {
+                        ChartMetric.USAGE -> stringResource(R.string.app_detail_usage_label)
+                        ChartMetric.SESSIONS -> stringResource(R.string.app_detail_sessions_label)
+                        ChartMetric.SCREEN_TIME -> stringResource(R.string.total_device_screen_time_label)
+                    },
                 )
                 Spacer(modifier = Modifier.size(16.dp))
                 StatGrid(state)
