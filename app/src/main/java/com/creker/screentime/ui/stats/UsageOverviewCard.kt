@@ -38,6 +38,7 @@ fun UsageOverviewCard(
     totalMillis: Long,
     usageChange: UsageComparison?,
     modifier: Modifier = Modifier,
+    onOpenTotalTime: (() -> Unit)? = null,
 ) {
     ChartCard(
         metric = metric,
@@ -49,6 +50,7 @@ fun UsageOverviewCard(
         usageChangePercent = usageChange?.percent,
         usageChangeIsDecrease = usageChange?.isDecrease ?: true,
         usageChangeComparedToYesterday = usageChange?.comparedToYesterday ?: true,
+        onTotalUsageClick = onOpenTotalTime,
         subtitle = {
             // This row now shares its card with the mode toggle beside it (less width
             // than before), and the full localized date ("22 авг. 2026 г.") no longer

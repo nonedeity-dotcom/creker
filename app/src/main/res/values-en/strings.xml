@@ -56,4 +56,9 @@
     <string name="usage_change_more_today">%1$d%% more than yesterday</string>
     <string name="usage_change_less_period">%1$d%% less than the previous period</string>
     <string name="usage_change_more_period">%1$d%% more than the previous period</string>
+
+    <string name="total_time_title">Total time</string>
+    <string name="ring_chart_title">App usage breakdown</string>
+    <string name="usage_analysis_section">Usage analysis</string>
+    <string name="time_saved_label">Time saved</string>
 </resources>

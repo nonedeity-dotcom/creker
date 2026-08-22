@@ -53,6 +53,7 @@ fun StatsScreen(
     onAppClick: (String) -> Unit,
     onSelectMetric: (ChartMetric) -> Unit,
     onExport: () -> Unit,
+    onOpenTotalTime: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var rangeDialogVisible by remember { mutableStateOf(false) }
@@ -111,6 +112,7 @@ fun StatsScreen(
                 totalMillis = state.totalMillis,
                 usageChange = state.usageChange,
                 modifier = Modifier.padding(all = 16.dp),
+                onOpenTotalTime = onOpenTotalTime,
             )
 
             if (state.hasIncompleteHistory) {

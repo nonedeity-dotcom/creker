@@ -34,6 +34,8 @@ import com.creker.screentime.ui.permission.PermissionScreen
 import com.creker.screentime.ui.stats.StatsScreen
 import com.creker.screentime.ui.stats.StatsViewModel
 import com.creker.screentime.ui.theme.CrekerScreenTimeTheme
+import com.creker.screentime.ui.totaltime.TotalTimeScreen
+import com.creker.screentime.ui.totaltime.TotalTimeViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,6 +72,7 @@ private fun ScreenTimeApp(container: AppContainer) {
     var hasAccess by remember { mutableStateOf(UsageAccess.isGranted(context)) }
     var settingsUnavailable by remember { mutableStateOf(false) }
     var selectedPackage by remember { mutableStateOf<String?>(null) }
+    var totalTimeOpen by remember { mutableStateOf(false) }
 
     // The permission is granted on a system screen, so the only reliable moment to
     // re-check it is when this activity comes back to the foreground.
@@ -99,7 +102,9 @@ private fun ScreenTimeApp(container: AppContainer) {
         }
     }
 
-    BackHandler(enabled = selectedPackage != null) { selectedPackage = null }
+    BackHandler(enabled = selectedPackage != null || totalTimeOpen) {
+        if (selectedPackage != null) selectedPackage = null else totalTimeOpen = false
+    }
 
     if (!hasAccess) {
         PermissionScreen(
@@ -134,6 +139,19 @@ private fun ScreenTimeApp(container: AppContainer) {
             onSelectRange = detailViewModel::selectRange,
             onSelectMetric = detailViewModel::selectMetric,
         )
+    } else if (totalTimeOpen) {
+        val totalTimeViewModel: TotalTimeViewModel = viewModel(factory = TotalTimeViewModel.factory(container))
+        val totalTimeState by totalTimeViewModel.uiState.collectAsStateWithLifecycle()
+        TotalTimeScreen(
+            state = totalTimeState,
+            today = LocalDate.now(),
+            onBack = { totalTimeOpen = false },
+            onPrevious = totalTimeViewModel::goToPreviousPeriod,
+            onNext = totalTimeViewModel::goToNextPeriod,
+            onSelectPeriod = totalTimeViewModel::selectPeriod,
+            onSelectCustomRange = totalTimeViewModel::selectCustomRange,
+            onAppClick = { selectedPackage = it },
+        )
     } else {
         StatsScreen(
             state = statsState,
@@ -146,6 +164,7 @@ private fun ScreenTimeApp(container: AppContainer) {
             onAppClick = { selectedPackage = it },
             onSelectMetric = statsViewModel::selectMetric,
             onExport = { exportLauncher.launch("screen_time_${LocalDate.now().format(EXPORT_FILE_DATE_FORMATTER)}.csv") },
+            onOpenTotalTime = { totalTimeOpen = true },
         )
     }
 }

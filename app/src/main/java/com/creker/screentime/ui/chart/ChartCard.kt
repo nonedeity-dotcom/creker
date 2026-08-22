@@ -2,6 +2,7 @@ package com.creker.screentime.ui.chart
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -64,6 +66,8 @@ fun ChartCard(
     usageChangeIsDecrease: Boolean = true,
     /** True: "чем вчера" wording, for a single-day period. False: "за предыдущий период". */
     usageChangeComparedToYesterday: Boolean = true,
+    /** Makes the total-usage row tappable — e.g. to open a full per-app breakdown. */
+    onTotalUsageClick: (() -> Unit)? = null,
     subtitle: @Composable () -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(ChartMode.Bar) }
@@ -121,7 +125,13 @@ fun ChartCard(
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 Spacer(modifier = Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable(enabled = onTotalUsageClick != null) { onTotalUsageClick?.invoke() },
+                ) {
                     Icon(
                         imageVector = Icons.Rounded.Visibility,
                         contentDescription = null,
@@ -139,7 +149,16 @@ fun ChartCard(
                         text = DurationFormatter.formatWithUnits(totalUsageMillis, units),
                         style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoNumeric),
                         color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
                     )
+                    if (onTotalUsageClick != null) {
+                        Icon(
+                            imageVector = Icons.Rounded.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
 
                 if (!showHeadlineValue && usageChangePercent != null) {

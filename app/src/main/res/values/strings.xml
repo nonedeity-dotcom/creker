@@ -65,4 +65,10 @@
     <string name="usage_change_more_today">На %1$d%% больше, чем вчера</string>
     <string name="usage_change_less_period">На %1$d%% меньше, чем за предыдущий период</string>
     <string name="usage_change_more_period">На %1$d%% больше, чем за предыдущий период</string>
+
+    <!-- Total time screen -->
+    <string name="total_time_title">Общее время</string>
+    <string name="ring_chart_title">Статистика использования приложений</string>
+    <string name="usage_analysis_section">Анализ использования</string>
+    <string name="time_saved_label">Сэкономлено времени</string>
 </resources>
