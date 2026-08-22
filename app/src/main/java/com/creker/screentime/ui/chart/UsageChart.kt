@@ -72,6 +72,14 @@ private const val MAX_ZOOM = 6f
 private val TOOLTIP_WIDTH = 132.dp
 private val VIEWPORT_HEIGHT = 190.dp
 
+/**
+ * Every point gets at least this much width. A crowded chart (24 hourly points) then
+ * comes out wider than the screen even before any pinch-zoom, so bars have visible
+ * gaps between them instead of touching edge-to-edge — scroll horizontally to see the
+ * rest, the same way zooming in already did.
+ */
+private val MIN_SLOT_WIDTH = 34.dp
+
 /** Bar / line switch, shown next to a chart's headline. */
 @Composable
 fun ChartModeToggle(mode: ChartMode, onModeChange: (ChartMode) -> Unit, modifier: Modifier = Modifier) {
@@ -181,26 +189,27 @@ fun UsageChart(
             .height(VIEWPORT_HEIGHT)
             .clipToBounds()
             // detectTransformGestures consumes the pointers it uses, so a pinch here
-            // is not stolen by the scrolling screen this chart sits on. Panning only
-            // engages once zoomed in, leaving one-finger drags to scroll the page.
+            // is not stolen by the scrolling screen this chart sits on. Horizontal
+            // panning is allowed as soon as the content (MIN_SLOT_WIDTH-driven) is
+            // wider than the viewport, even before any pinch; vertical panning still
+            // only engages once zoomed in, leaving one-finger vertical drags to scroll
+            // the page.
             .pointerInput(points.size) {
                 detectTransformGestures { _, panChange, zoomChange, _ ->
                     val newZoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
-                    val maxPanX = size.width * (newZoom - 1f)
+                    val baseWidthPx = maxOf(size.width.toFloat(), MIN_SLOT_WIDTH.toPx() * points.size)
+                    val maxPanX = (baseWidthPx * newZoom - size.width).coerceAtLeast(0f)
                     val maxPanY = size.height * (newZoom - 1f)
                     zoom = newZoom
-                    pan = if (newZoom > 1f) {
-                        Offset(
-                            (pan.x - panChange.x).coerceIn(0f, maxPanX),
-                            (pan.y - panChange.y).coerceIn(0f, maxPanY),
-                        )
-                    } else {
-                        Offset.Zero
-                    }
+                    pan = Offset(
+                        (pan.x - panChange.x).coerceIn(0f, maxPanX),
+                        (pan.y - panChange.y).coerceIn(0f, maxPanY),
+                    )
                 }
             },
     ) {
-        val contentWidth: Dp = maxWidth * zoom
+        val baseWidth: Dp = maxOf(maxWidth, MIN_SLOT_WIDTH * points.size)
+        val contentWidth: Dp = baseWidth * zoom
         val contentHeight: Dp = maxHeight * zoom
         Canvas(
             modifier = Modifier
@@ -255,7 +264,7 @@ private fun DrawScope.drawBars(
 ) {
     if (points.isEmpty()) return
     val slotWidth = size.width / points.size
-    val barWidth = (slotWidth * 1.00f).coerceAtLeast(6.dp.toPx())
+    val barWidth = (slotWidth * 0.78f).coerceAtLeast(6.dp.toPx())
     val corner = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
     val labelGap = 3.dp.toPx()
     var lastLabelRight = Float.NEGATIVE_INFINITY
