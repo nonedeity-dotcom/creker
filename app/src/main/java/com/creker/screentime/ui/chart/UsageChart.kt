@@ -8,7 +8,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -213,7 +212,8 @@ fun UsageChart(
             // a plain vertical one-finger drag -- which meant touching the chart ever
             // blocked the screen's own scroll, not just while pinching. Split it: pinch
             // is handled by hand below and only looks at frames with 2+ pointers down,
-            // so a single finger is never consumed here.
+            // so a single finger is never consumed here -- it is left for
+            // horizontalScroll's own gesture detector below, or the page's own scroll.
             .pointerInput(points.size) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -234,15 +234,6 @@ fun UsageChart(
                         pressed.forEach { it.consume() }
                     } while (event.changes.any { it.pressed })
                 }
-            }
-            // detectHorizontalDragGestures only claims a drag Compose itself resolves
-            // as horizontal (via its own touch-slop direction check), so a vertical
-            // one-finger drag is left untouched here and reaches the page's scroll.
-            .pointerInput(points.size) {
-                detectHorizontalDragGestures { change, dragAmount ->
-                    horizontalScrollState.dispatchRawDelta(-dragAmount)
-                    change.consume()
-                }
             },
     ) {
         val baseWidth: Dp = maxOf(maxWidth, MIN_SLOT_WIDTH * points.size)
@@ -252,7 +243,17 @@ fun UsageChart(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .horizontalScroll(horizontalScrollState, enabled = false)
+                // enabled = true here (unlike verticalScroll below): a hand-rolled
+                // detectHorizontalDragGestures + dispatchRawDelta combination did not
+                // move the chart at all on a real device -- most likely losing the
+                // touch-slop/direction race against the page's own vertical scroll.
+                // horizontalScroll's own built-in scrollable() is Compose's
+                // battle-tested implementation of exactly that negotiation, so single-
+                // finger horizontal panning is handed to it entirely instead of
+                // reimplemented by hand. Vertical panning has no such single-finger
+                // gesture of its own (it only happens via the pinch loop above), so it
+                // stays enabled = false, driven solely by dispatchRawDelta.
+                .horizontalScroll(horizontalScrollState, enabled = true)
                 .verticalScroll(verticalScrollState, enabled = false),
         ) {
             Canvas(
