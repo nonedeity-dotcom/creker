@@ -75,7 +75,7 @@ enum class ChartMode { Bar, Line }
 private const val GRID_LINE_COUNT = 3
 private const val MAX_ZOOM = 6f
 private val TOOLTIP_WIDTH = 132.dp
-private val VIEWPORT_HEIGHT = 190.dp
+private val VIEWPORT_HEIGHT = 150.dp
 
 /**
  * Every point gets at least this much width. A crowded chart (24 hourly points) then

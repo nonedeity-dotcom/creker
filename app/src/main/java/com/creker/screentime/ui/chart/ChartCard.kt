@@ -84,7 +84,7 @@ fun ChartCard(
                         ),
                     ),
                 )
-                .padding(horizontal = 20.dp, vertical = 18.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
         ) {
             Row(verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
@@ -104,12 +104,12 @@ fun ChartCard(
                 ChartModeToggle(mode = mode, onModeChange = { mode = it })
             }
             subtitle()
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             MetricSelector(selected = metric, onSelect = onMetricChange)
 
             val units = rememberDurationUnits()
             if (chartPoints.any { it.value > 0L }) {
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 UsageChart(
                     points = chartPoints,
                     mode = mode,
@@ -121,9 +121,9 @@ fun ChartCard(
             }
 
             if (totalUsageMillis != null) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f))
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Rounded.Visibility,
@@ -146,7 +146,7 @@ fun ChartCard(
                 }
 
                 if (usageChangePercent != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     UsageChangeChip(
                         percent = usageChangePercent,
                         isDecrease = usageChangeIsDecrease,
