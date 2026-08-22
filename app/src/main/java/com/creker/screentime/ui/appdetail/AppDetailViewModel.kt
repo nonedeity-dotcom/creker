@@ -65,12 +65,14 @@ class AppDetailViewModel(
     /**
      * Usage and sessions are this one app's own numbers; screen time is device-wide
      * and shared verbatim with the overview screen, since it is not tied to any
-     * particular app. As on the overview chart, the hourly case is used only for
-     * today and yesterday — Room does not store hourly history, and further back the
-     * system's own raw event log has likely already aged out.
+     * particular app. As on the overview chart, the hourly case is restricted to the
+     * same rolling window sync() itself relies on for the system's raw event log
+     * (IMPORT_WINDOW_DAYS) — Room does not store hourly history, and further back the
+     * live log has likely already aged out.
      */
     private fun chartPointsFlow(range: DayRange, metric: ChartMetric): Flow<List<ChartPoint>> {
-        val isRecentSingleDay = range.dayCount == 1 && !range.from.isBefore(repository.today().minusDays(1))
+        val isRecentSingleDay = range.dayCount == 1 &&
+            !range.from.isBefore(repository.today().minusDays(UsageRepository.IMPORT_WINDOW_DAYS))
         val useWeekdayLabels = range.dayCount <= 8
         return when (metric) {
             ChartMetric.USAGE -> if (isRecentSingleDay) {

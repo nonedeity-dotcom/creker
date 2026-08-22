@@ -174,9 +174,14 @@ fun UsageChart(
     formatTooltip: (Long) -> String,
     modifier: Modifier = Modifier,
 ) {
-    var zoom by remember(points.size) { mutableFloatStateOf(1f) }
-    var pan by remember(points.size) { mutableStateOf(Offset.Zero) }
-    var tappedIndex by remember(points.size, mode) { mutableStateOf<Int?>(null) }
+    // Keyed on points itself, not points.size: switching from one day to another
+    // hourly chart keeps the same 24-point count, so a size-only key left an old
+    // zoom/pan carried over onto the new data — the chart opened already scrolled
+    // off to wherever the previous day's gesture had left it, with no way back to
+    // hour 0 since pan can only move forward from there.
+    var zoom by remember(points) { mutableFloatStateOf(1f) }
+    var pan by remember(points) { mutableStateOf(Offset.Zero) }
+    var tappedIndex by remember(points, mode) { mutableStateOf<Int?>(null) }
 
     val barColor = MaterialTheme.colorScheme.primary
     val fillColor = barColor.copy(alpha = 0.18f)

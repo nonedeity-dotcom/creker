@@ -77,13 +77,14 @@ class StatsViewModel(
     /**
      * A single day gets an hour-by-hour chart, since that is the only granularity worth
      * plotting within one day; anything longer gets one point per day. Restricted to
-     * today and yesterday: Room only stores daily totals, and a live hourly breakdown
-     * needs the system's own raw event log, which for anything further back has
-     * likely already aged out — that would render as a misleadingly empty chart even
-     * though a real total exists.
+     * the same rolling window sync() itself relies on for the system's raw event log
+     * (IMPORT_WINDOW_DAYS) — a live hourly breakdown needs that log directly, and
+     * further back it has likely already aged out, which would render as a
+     * misleadingly empty chart even though a real (Room-stored) total exists.
      */
     private fun chartPointsFlow(range: DayRange, metric: ChartMetric): Flow<List<ChartPoint>> {
-        val isRecentSingleDay = range.dayCount == 1 && !range.from.isBefore(repository.today().minusDays(1))
+        val isRecentSingleDay = range.dayCount == 1 &&
+            !range.from.isBefore(repository.today().minusDays(UsageRepository.IMPORT_WINDOW_DAYS))
         val useWeekdayLabels = range.dayCount <= 8
         return when (metric) {
             ChartMetric.USAGE -> if (isRecentSingleDay) {

@@ -245,16 +245,18 @@ class UsageRepository(
         }
     }
 
-    private companion object {
+    companion object {
         /**
          * How far back the system keeps detailed events, conservatively — and so also
-         * how much history the very first run can import.
+         * how much history the very first run can import. Also how far back a chart
+         * can ask for an hourly (rather than daily-total) breakdown of a single day,
+         * since that reads this same live event log directly.
          */
-        const val IMPORT_WINDOW_DAYS = 7L
+        internal const val IMPORT_WINDOW_DAYS = 7L
 
         /** How much local history to keep before pruning. */
-        const val HISTORY_RETENTION_DAYS = 400L
+        private const val HISTORY_RETENTION_DAYS = 400L
 
-        val SESSION_LOOKBACK_MS = TimeUnit.HOURS.toMillis(12)
+        private val SESSION_LOOKBACK_MS = TimeUnit.HOURS.toMillis(12)
     }
 }
