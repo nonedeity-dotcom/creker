@@ -1,9 +1,23 @@
 package com.creker.screentime.ui.chart
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
@@ -48,6 +62,52 @@ class ChartScreenshotTest {
                             chartPoints = hourlyPoints,
                             totalUsageMillis = hourlyPoints.sumOf { it.value },
                         )
+                    }
+                }
+            }
+        }
+    }
+
+    // Temporary: the user reports that after switching UsageChart's pan from a manual
+    // offset() to horizontalScroll()/verticalScroll() (both enabled = false, driven via
+    // dispatchRawDelta), the chart opens correctly at hour 0 but can no longer be
+    // scrolled further -- it stays capped early. A real swipe can't be simulated here,
+    // but this isolates the other half: whether the *positioning* side of that same
+    // nested horizontalScroll+verticalScroll+requiredWidth setup even honours a
+    // non-zero scroll offset at all. A pre-seeded ScrollState(200dp-worth of pixels)
+    // should shift the blue marker (at 400dp) most of the way to the left edge if the
+    // wiring is sound; if it still shows the red marker (0dp) undisturbed, the bug is
+    // in this layout wiring, not in gesture dispatch.
+    @Test
+    fun debugPresetScrollOffset() {
+        paparazzi.snapshot {
+            CrekerScreenTimeTheme(darkTheme = true) {
+                Surface(Modifier.fillMaxSize()) {
+                    val density = LocalDensity.current
+                    val hState = remember { ScrollState(with(density) { 200.dp.roundToPx() }) }
+                    val vState = remember { ScrollState(0) }
+                    Box(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth()
+                            .height(190.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .horizontalScroll(hState, enabled = false)
+                                .verticalScroll(vState, enabled = false),
+                        ) {
+                            Canvas(
+                                modifier = Modifier
+                                    .requiredWidth(800.dp)
+                                    .requiredHeight(190.dp),
+                            ) {
+                                drawRect(color = Color.Red, topLeft = Offset.Zero, size = Size(20.dp.toPx(), size.height))
+                                drawRect(color = Color.Blue, topLeft = Offset(400.dp.toPx(), 0f), size = Size(20.dp.toPx(), size.height))
+                                drawRect(color = Color.Green, topLeft = Offset(780.dp.toPx(), 0f), size = Size(20.dp.toPx(), size.height))
+                            }
+                        }
                     }
                 }
             }
