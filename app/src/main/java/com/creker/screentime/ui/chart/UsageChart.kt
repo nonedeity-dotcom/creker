@@ -3,8 +3,12 @@ package com.creker.screentime.ui.chart
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -194,23 +198,42 @@ fun UsageChart(
             .fillMaxWidth()
             .height(VIEWPORT_HEIGHT)
             .clipToBounds()
-            // detectTransformGestures consumes the pointers it uses, so a pinch here
-            // is not stolen by the scrolling screen this chart sits on. Horizontal
-            // panning is allowed as soon as the content (MIN_SLOT_WIDTH-driven) is
-            // wider than the viewport, even before any pinch; vertical panning still
-            // only engages once zoomed in, leaving one-finger vertical drags to scroll
-            // the page.
+            // detectTransformGestures consumed every gesture over this area, including
+            // a plain vertical one-finger drag -- which meant touching the chart ever
+            // blocked the screen's own scroll, not just while pinching. Split it: pinch
+            // is handled by hand below and only looks at frames with 2+ pointers down,
+            // so a single finger is never consumed here.
             .pointerInput(points.size) {
-                detectTransformGestures { _, panChange, zoomChange, _ ->
-                    val newZoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    do {
+                        val event = awaitPointerEvent()
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.size < 2) continue
+                        val zoomChange = event.calculateZoom()
+                        val panChange = event.calculatePan()
+                        val newZoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
+                        val baseWidthPx = maxOf(size.width.toFloat(), MIN_SLOT_WIDTH.toPx() * points.size)
+                        val maxPanX = (baseWidthPx * newZoom - size.width).coerceAtLeast(0f)
+                        val maxPanY = size.height * (newZoom - 1f)
+                        zoom = newZoom
+                        pan = Offset(
+                            (pan.x - panChange.x).coerceIn(0f, maxPanX),
+                            (pan.y - panChange.y).coerceIn(0f, maxPanY),
+                        )
+                        pressed.forEach { it.consume() }
+                    } while (event.changes.any { it.pressed })
+                }
+            }
+            // detectHorizontalDragGestures only claims a drag Compose itself resolves
+            // as horizontal (via its own touch-slop direction check), so a vertical
+            // one-finger drag is left untouched here and reaches the page's scroll.
+            .pointerInput(points.size) {
+                detectHorizontalDragGestures { change, dragAmount ->
                     val baseWidthPx = maxOf(size.width.toFloat(), MIN_SLOT_WIDTH.toPx() * points.size)
-                    val maxPanX = (baseWidthPx * newZoom - size.width).coerceAtLeast(0f)
-                    val maxPanY = size.height * (newZoom - 1f)
-                    zoom = newZoom
-                    pan = Offset(
-                        (pan.x - panChange.x).coerceIn(0f, maxPanX),
-                        (pan.y - panChange.y).coerceIn(0f, maxPanY),
-                    )
+                    val maxPanX = (baseWidthPx * zoom - size.width).coerceAtLeast(0f)
+                    pan = pan.copy(x = (pan.x - dragAmount).coerceIn(0f, maxPanX))
+                    change.consume()
                 }
             },
     ) {
