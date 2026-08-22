@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,7 +64,7 @@ fun ChartCard(
     usageChangeIsDecrease: Boolean = true,
     /** True: "чем вчера" wording, for a single-day period. False: "за предыдущий период". */
     usageChangeComparedToYesterday: Boolean = true,
-    subtitle: @Composable ColumnScope.() -> Unit = {},
+    subtitle: @Composable () -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(ChartMode.Bar) }
     val total = chartPoints.sumOf { it.value }
