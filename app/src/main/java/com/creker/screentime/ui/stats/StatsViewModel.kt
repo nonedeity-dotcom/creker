@@ -76,28 +76,29 @@ class StatsViewModel(
 
     /**
      * A single day gets an hour-by-hour chart, since that is the only granularity worth
-     * plotting within one day; anything longer gets one point per day. The single-day
-     * case is restricted to today specifically — Room only stores daily totals, so an
-     * hourly breakdown of a past day would need events the system has likely already
-     * discarded and would render as a misleadingly flat chart.
+     * plotting within one day; anything longer gets one point per day. Restricted to
+     * today and yesterday: Room only stores daily totals, and a live hourly breakdown
+     * needs the system's own raw event log, which for anything further back has
+     * likely already aged out — that would render as a misleadingly empty chart even
+     * though a real total exists.
      */
     private fun chartPointsFlow(range: DayRange, metric: ChartMetric): Flow<List<ChartPoint>> {
-        val isToday = range.dayCount == 1 && range.from == repository.today()
+        val isRecentSingleDay = range.dayCount == 1 && !range.from.isBefore(repository.today().minusDays(1))
         val useWeekdayLabels = range.dayCount <= 8
         return when (metric) {
-            ChartMetric.USAGE -> if (isToday) {
+            ChartMetric.USAGE -> if (isRecentSingleDay) {
                 flow { emit(repository.hourlyBreakdown(range.from).toHourlyChartPoints()) }
             } else {
                 repository.observeDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }
             }
 
-            ChartMetric.SESSIONS -> if (isToday) {
+            ChartMetric.SESSIONS -> if (isRecentSingleDay) {
                 flow { emit(repository.hourlySessions(range.from).toHourlyChartPoints()) }
             } else {
                 repository.observeSessionDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }
             }
 
-            ChartMetric.SCREEN_TIME -> if (isToday) {
+            ChartMetric.SCREEN_TIME -> if (isRecentSingleDay) {
                 flow { emit(repository.hourlyScreenTime(range.from).toHourlyChartPoints()) }
             } else {
                 repository.observeDeviceDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }

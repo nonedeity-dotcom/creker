@@ -65,26 +65,27 @@ class AppDetailViewModel(
     /**
      * Usage and sessions are this one app's own numbers; screen time is device-wide
      * and shared verbatim with the overview screen, since it is not tied to any
-     * particular app. As on the overview chart, the hourly (today-only) case is used
-     * only for the current day — Room does not store hourly history.
+     * particular app. As on the overview chart, the hourly case is used only for
+     * today and yesterday — Room does not store hourly history, and further back the
+     * system's own raw event log has likely already aged out.
      */
     private fun chartPointsFlow(range: DayRange, metric: ChartMetric): Flow<List<ChartPoint>> {
-        val isToday = range.dayCount == 1 && range.from == repository.today()
+        val isRecentSingleDay = range.dayCount == 1 && !range.from.isBefore(repository.today().minusDays(1))
         val useWeekdayLabels = range.dayCount <= 8
         return when (metric) {
-            ChartMetric.USAGE -> if (isToday) {
+            ChartMetric.USAGE -> if (isRecentSingleDay) {
                 flow { emit(repository.hourlyBreakdownForApp(range.from, packageName).toHourlyChartPoints()) }
             } else {
                 repository.observeAppDailyUsage(packageName, range).map { it.toDailyChartPoints(useWeekdayLabels) }
             }
 
-            ChartMetric.SESSIONS -> if (isToday) {
+            ChartMetric.SESSIONS -> if (isRecentSingleDay) {
                 flow { emit(repository.hourlySessionsForApp(range.from, packageName).toHourlyChartPoints()) }
             } else {
                 repository.observeAppDailySessions(packageName, range).map { it.toDailyChartPoints(useWeekdayLabels) }
             }
 
-            ChartMetric.SCREEN_TIME -> if (isToday) {
+            ChartMetric.SCREEN_TIME -> if (isRecentSingleDay) {
                 flow { emit(repository.hourlyScreenTime(range.from).toHourlyChartPoints()) }
             } else {
                 repository.observeDeviceDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }
