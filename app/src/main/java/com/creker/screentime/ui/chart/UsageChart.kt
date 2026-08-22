@@ -133,7 +133,7 @@ private fun MetricChip(metric: ChartMetric, icon: ImageVector, selected: ChartMe
         colors = FilterChipDefaults.filterChipColors(
             containerColor = Color.Transparent,
             labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            leadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            iconColor = MaterialTheme.colorScheme.onPrimaryContainer,
             selectedContainerColor = MaterialTheme.colorScheme.primary,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
             selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
