@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +35,26 @@ jobs:
           name: screenshots
           path: app/src/test/snapshots/images/**/*.png
           if-no-files-found: error
+
+      # The artifact above sits on Azure Blob Storage, which this project's own
+      # egress policy has no way to fetch directly. A dedicated branch, fetched
+      # through the GitHub API instead, is reachable the same way any other repo
+      # content is.
+      - name: Publish screenshots to the ci-screenshots branch
+        run: |
+          set -e
+          rm -rf /tmp/shots-repo
+          mkdir -p /tmp/shots-repo
+          cp app/src/test/snapshots/images/*.png /tmp/shots-repo/
+          cd /tmp/shots-repo
+          git init -q
+          git config user.name "creker-ci"
+          git config user.email "ci@creker.local"
+          git add -A
+          git commit -q -m "Screenshots from ${GITHUB_SHA}"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:ci-screenshots
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build debug APK
         run: ./gradlew assembleDebug
