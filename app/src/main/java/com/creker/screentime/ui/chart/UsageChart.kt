@@ -255,7 +255,7 @@ private fun DrawScope.drawBars(
 ) {
     if (points.isEmpty()) return
     val slotWidth = size.width / points.size
-    val barWidth = (slotWidth * 0.88f).coerceAtLeast(6.dp.toPx())
+    val barWidth = (slotWidth * 2.00f).coerceAtLeast(6.dp.toPx())
     val corner = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
     val labelGap = 3.dp.toPx()
     var lastLabelRight = Float.NEGATIVE_INFINITY
