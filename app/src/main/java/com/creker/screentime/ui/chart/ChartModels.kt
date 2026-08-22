@@ -67,11 +67,15 @@ fun ChartMetric.formatCompact(value: Long, units: DurationUnits): String = when 
     ChartMetric.SESSIONS -> value.toString()
 }
 
-/** The headline label shown above a chart's total, for whichever metric is selected. */
+/**
+ * The headline label shown above a chart's total, for whichever metric is selected —
+ * the same wording as its picker chip, so the headline always names what is actually
+ * selected instead of a name fixed to one metric.
+ */
 val ChartMetric.headlineLabelRes: Int
     get() = when (this) {
-        ChartMetric.USAGE -> R.string.total_screen_time
-        ChartMetric.SESSIONS -> R.string.total_sessions_label
+        ChartMetric.USAGE -> R.string.metric_usage
+        ChartMetric.SESSIONS -> R.string.metric_sessions
         ChartMetric.SCREEN_TIME -> R.string.total_device_screen_time_label
     }
 

@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.ShowChart
-import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -112,7 +111,6 @@ fun MetricSelector(selected: ChartMetric, onSelect: (ChartMetric) -> Unit, modif
     ) {
         MetricChip(ChartMetric.USAGE, Icons.Rounded.AccessTime, selected, onSelect)
         MetricChip(ChartMetric.SESSIONS, Icons.Rounded.TouchApp, selected, onSelect)
-        MetricChip(ChartMetric.SCREEN_TIME, Icons.Rounded.Smartphone, selected, onSelect)
     }
 }
 

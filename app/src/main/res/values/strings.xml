@@ -10,7 +10,6 @@
     <string name="permission_settings_missing">Не удалось открыть системный экран. Откройте Настройки → Приложения → Специальный доступ → Доступ к данным об использовании.</string>
 
     <!-- Stats screen -->
-    <string name="total_screen_time">Общее время экрана</string>
     <string name="apps_count">Приложений: %1$d</string>
     <string name="sorted_by_usage">От самого используемого к наименее используемому</string>
     <string name="refresh">Обновить</string>
@@ -46,7 +45,6 @@
     <string name="metric_usage">Использование</string>
     <string name="metric_sessions">Сеансы</string>
     <string name="metric_screen_time">Экранное время</string>
-    <string name="total_sessions_label">Всего сеансов</string>
     <string name="total_device_screen_time_label">Время на экране</string>
 
     <!-- Period presets (app detail screen) -->

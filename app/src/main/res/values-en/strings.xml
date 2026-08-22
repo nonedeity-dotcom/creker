@@ -8,7 +8,6 @@
     <string name="permission_recheck">I enabled it, check again</string>
     <string name="permission_settings_missing">Could not open the system screen. Go to Settings → Apps → Special access → Usage access.</string>
 
-    <string name="total_screen_time">Total screen time</string>
     <string name="apps_count">Apps: %1$d</string>
     <string name="sorted_by_usage">Sorted from most to least used</string>
     <string name="refresh">Refresh</string>
@@ -41,7 +40,6 @@
     <string name="metric_usage">Usage</string>
     <string name="metric_sessions">Sessions</string>
     <string name="metric_screen_time">Screen time</string>
-    <string name="total_sessions_label">Total sessions</string>
     <string name="total_device_screen_time_label">Screen time</string>
 
     <string name="period_preset_last_week">Last week</string>
