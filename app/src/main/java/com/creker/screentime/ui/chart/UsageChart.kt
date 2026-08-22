@@ -8,9 +8,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,7 +43,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,7 +69,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.ui.theme.MonoNumeric
-import kotlinx.coroutines.launch
 
 enum class ChartMode { Bar, Line }
 
@@ -191,12 +187,11 @@ fun UsageChart(
     // inside a narrow viewport — and position their content from a scroll offset
     // (0 = the content's own start), not from Box alignment, so they sidestep that
     // bug entirely instead of working around it. Driven programmatically (enabled =
-    // false on both — see the gesture handling below for why) since zoom/pan are
-    // already handled by hand-rolled pinch/drag gesture detectors.
+    // false, moved only via dispatchRawDelta) since zoom/pan are already handled by
+    // the same hand-rolled pinch/drag gesture detectors as before.
     val horizontalScrollState = remember(points) { ScrollState(0) }
     val verticalScrollState = remember(points) { ScrollState(0) }
     var tappedIndex by remember(points, mode) { mutableStateOf<Int?>(null) }
-    val scope = rememberCoroutineScope()
 
     val barColor = MaterialTheme.colorScheme.primary
     val fillColor = barColor.copy(alpha = 0.18f)
@@ -218,16 +213,7 @@ fun UsageChart(
             // blocked the screen's own scroll, not just while pinching. Split it: pinch
             // is handled by hand below and only looks at frames with 2+ pointers down,
             // so a single finger is never consumed here -- it is left for
-            // detectHorizontalDragGestures below, or the page's own scroll.
-            //
-            // Panning applies via scrollBy (suspend, launched on scope), not
-            // dispatchRawDelta: the latter is Compose's low-level, non-suspend escape
-            // hatch, documented as unsuited to touch-driven scrolling ("prefer scroll()
-            // for touch input") — and indeed it produced no visible movement at all on
-            // a real device, despite a dry-run screenshot test proving the underlying
-            // horizontalScroll/verticalScroll layout wiring itself was sound. scrollBy
-            // goes through the same scroll() coroutine machinery Modifier.scrollable()
-            // itself uses internally, which is the supported path for this.
+            // horizontalScroll's own gesture detector below, or the page's own scroll.
             .pointerInput(points.size) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -238,23 +224,15 @@ fun UsageChart(
                         val zoomChange = event.calculateZoom()
                         val panChange = event.calculatePan()
                         zoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
-                        scope.launch { horizontalScrollState.scrollBy(-panChange.x) }
-                        scope.launch { verticalScrollState.scrollBy(-panChange.y) }
+                        // dispatchRawDelta is a plain (non-suspend) function that moves
+                        // the scroll offset directly and auto-clamps it to [0, content
+                        // size - viewport size], which the ScrollState itself tracks
+                        // from the Canvas's actual measured width/height below — no
+                        // manual maxPanX/maxPanY bookkeeping needed anymore.
+                        horizontalScrollState.dispatchRawDelta(-panChange.x)
+                        verticalScrollState.dispatchRawDelta(-panChange.y)
                         pressed.forEach { it.consume() }
                     } while (event.changes.any { it.pressed })
-                }
-            }
-            // detectHorizontalDragGestures only claims a drag Compose itself resolves
-            // as horizontal (via its own touch-slop direction check), so a vertical
-            // one-finger drag is left untouched here and reaches the page's scroll —
-            // this is what let AppDetailScreen's own outer verticalScroll keep working,
-            // where horizontalScroll's built-in enabled = true gesture detector (tried
-            // here instead in an earlier version of this fix) ended up capturing some
-            // vertical drags too and froze that screen's own scrolling.
-            .pointerInput(points.size) {
-                detectHorizontalDragGestures { change, dragAmount ->
-                    scope.launch { horizontalScrollState.scrollBy(-dragAmount) }
-                    change.consume()
                 }
             },
     ) {
@@ -265,7 +243,17 @@ fun UsageChart(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .horizontalScroll(horizontalScrollState, enabled = false)
+                // enabled = true here (unlike verticalScroll below): a hand-rolled
+                // detectHorizontalDragGestures + dispatchRawDelta combination did not
+                // move the chart at all on a real device -- most likely losing the
+                // touch-slop/direction race against the page's own vertical scroll.
+                // horizontalScroll's own built-in scrollable() is Compose's
+                // battle-tested implementation of exactly that negotiation, so single-
+                // finger horizontal panning is handed to it entirely instead of
+                // reimplemented by hand. Vertical panning has no such single-finger
+                // gesture of its own (it only happens via the pinch loop above), so it
+                // stays enabled = false, driven solely by dispatchRawDelta.
+                .horizontalScroll(horizontalScrollState, enabled = true)
                 .verticalScroll(verticalScrollState, enabled = false),
         ) {
             Canvas(
