@@ -8,7 +8,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,7 +29,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
+import com.creker.screentime.core.DurationFormatter
+import com.creker.screentime.ui.theme.MonoNumeric
 
 /**
  * The headline panel: the total for whichever metric is selected, a bar/line toggle,
@@ -39,6 +48,8 @@ fun ChartCard(
     chartPoints: List<ChartPoint>,
     modifier: Modifier = Modifier,
     headlineLabel: String = stringResource(metric.headlineLabelRes),
+    /** Total app usage over the period, shown as a row at the bottom of this same card. */
+    totalUsageMillis: Long? = null,
     subtitle: @Composable ColumnScope.() -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(ChartMode.Bar) }
@@ -83,9 +94,9 @@ fun ChartCard(
             Spacer(modifier = Modifier.height(14.dp))
             MetricSelector(selected = metric, onSelect = onMetricChange)
 
+            val units = rememberDurationUnits()
             if (chartPoints.any { it.value > 0L }) {
                 Spacer(modifier = Modifier.height(18.dp))
-                val units = rememberDurationUnits()
                 UsageChart(
                     points = chartPoints,
                     mode = mode,
@@ -94,6 +105,32 @@ fun ChartCard(
                     formatTooltip = metric::formatValue,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)),
                 )
+            }
+
+            if (totalUsageMillis != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f))
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Visibility,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.total_usage_row_label),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = DurationFormatter.formatWithUnits(totalUsageMillis, units),
+                        style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoNumeric),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
         }
     }

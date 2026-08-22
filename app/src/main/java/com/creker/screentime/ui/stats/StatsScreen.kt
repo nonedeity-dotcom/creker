@@ -108,15 +108,9 @@ fun StatsScreen(
                 range = state.range,
                 appCount = state.apps.size,
                 chartPoints = state.chartPoints,
+                totalMillis = state.totalMillis,
                 modifier = Modifier.padding(all = 16.dp),
             )
-
-            if (state.apps.isNotEmpty()) {
-                TotalUsageRow(
-                    totalMillis = state.totalMillis,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
 
             if (state.hasIncompleteHistory) {
                 HistoryNotice(state.earliestStoredDay)

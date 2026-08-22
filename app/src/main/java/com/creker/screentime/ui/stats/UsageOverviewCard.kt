@@ -21,6 +21,7 @@ fun UsageOverviewCard(
     range: DayRange,
     appCount: Int,
     chartPoints: List<ChartPoint>,
+    totalMillis: Long,
     modifier: Modifier = Modifier,
 ) {
     ChartCard(
@@ -28,6 +29,7 @@ fun UsageOverviewCard(
         onMetricChange = onMetricChange,
         chartPoints = chartPoints,
         modifier = modifier,
+        totalUsageMillis = if (appCount > 0) totalMillis else null,
         subtitle = {
             Text(
                 text = range.formatted(),
