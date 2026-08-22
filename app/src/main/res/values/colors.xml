@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The dark "oven" the biscuit sits on, in the launcher icon. -->
-    <color name="ic_launcher_background">#17110C</color>
     <color name="window_background">#FFF8F0</color>
 </resources>
