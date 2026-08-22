@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.creker.screentime.R
@@ -49,6 +50,11 @@ fun UsageOverviewCard(
         usageChangeIsDecrease = usageChange?.isDecrease ?: true,
         usageChangeComparedToYesterday = usageChange?.comparedToYesterday ?: true,
         subtitle = {
+            // This row now shares its card with the mode toggle beside it (less width
+            // than before), and the full localized date ("22 авг. 2026 г.") no longer
+            // fits next to the app count -- it wrapped mid-word instead of just eliding.
+            // formattedCompact() drops the year and the maxLines/ellipsis pair below is
+            // a safety net for anything still too tight.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = 4.dp),
@@ -60,12 +66,14 @@ fun UsageOverviewCard(
                     modifier = Modifier.size(15.dp),
                 )
                 Text(
-                    text = range.formatted(),
+                    text = range.formattedCompact(),
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.2.sp,
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 6.dp),
                 )
 
@@ -92,6 +100,8 @@ fun UsageOverviewCard(
                         letterSpacing = 0.2.sp,
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 6.dp),
                 )
             }

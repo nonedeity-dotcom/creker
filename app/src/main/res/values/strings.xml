@@ -10,7 +10,7 @@
     <string name="permission_settings_missing">Не удалось открыть системный экран. Откройте Настройки → Приложения → Специальный доступ → Доступ к данным об использовании.</string>
 
     <!-- Stats screen -->
-    <string name="apps_count">Приложений: %1$d</string>
+    <string name="apps_count">%1$d прил.</string>
     <string name="sorted_by_usage">От самого используемого к наименее используемому</string>
     <string name="refresh">Обновить</string>
     <string name="empty_title">Пока нет данных</string>
