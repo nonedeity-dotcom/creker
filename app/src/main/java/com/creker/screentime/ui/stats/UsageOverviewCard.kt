@@ -34,6 +34,7 @@ fun UsageOverviewCard(
     appCount: Int,
     chartPoints: List<ChartPoint>,
     totalMillis: Long,
+    usageChange: UsageComparison?,
     modifier: Modifier = Modifier,
 ) {
     ChartCard(
@@ -43,6 +44,9 @@ fun UsageOverviewCard(
         modifier = modifier,
         showHeadlineValue = false,
         totalUsageMillis = if (appCount > 0) totalMillis else null,
+        usageChangePercent = usageChange?.percent,
+        usageChangeIsDecrease = usageChange?.isDecrease ?: true,
+        usageChangeComparedToYesterday = usageChange?.comparedToYesterday ?: true,
         subtitle = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

@@ -27,12 +27,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DurationFormatter
 import com.creker.screentime.ui.theme.MonoNumeric
+
+/** A muted, theme-independent green — the one color in this palette that always reads as "good". */
+private val ImprovedGreen = Color(0xFF5FB86A)
 
 /**
  * The headline panel: the total for whichever metric is selected, a bar/line toggle,
@@ -52,6 +56,11 @@ fun ChartCard(
     totalUsageMillis: Long? = null,
     /** False hides the big headline figure, leaving only the label and [subtitle]. */
     showHeadlineValue: Boolean = true,
+    /** Percent change vs. the previous equally-long period; null hides the chip entirely. */
+    usageChangePercent: Int? = null,
+    usageChangeIsDecrease: Boolean = true,
+    /** True: "чем вчера" wording, for a single-day period. False: "за предыдущий период". */
+    usageChangeComparedToYesterday: Boolean = true,
     subtitle: @Composable ColumnScope.() -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(ChartMode.Bar) }
@@ -135,7 +144,49 @@ fun ChartCard(
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
+
+                if (usageChangePercent != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    UsageChangeChip(
+                        percent = usageChangePercent,
+                        isDecrease = usageChangeIsDecrease,
+                        comparedToYesterday = usageChangeComparedToYesterday,
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun UsageChangeChip(percent: Int, isDecrease: Boolean, comparedToYesterday: Boolean) {
+    val tint = if (isDecrease) ImprovedGreen else MaterialTheme.colorScheme.error
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(tint.copy(alpha = 0.16f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Visibility,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(
+                when {
+                    isDecrease && comparedToYesterday -> R.string.usage_change_less_today
+                    !isDecrease && comparedToYesterday -> R.string.usage_change_more_today
+                    isDecrease && !comparedToYesterday -> R.string.usage_change_less_period
+                    else -> R.string.usage_change_more_period
+                },
+                percent,
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = tint,
+        )
     }
 }

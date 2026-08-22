@@ -109,6 +109,7 @@ fun StatsScreen(
                 appCount = state.apps.size,
                 chartPoints = state.chartPoints,
                 totalMillis = state.totalMillis,
+                usageChange = state.usageChange,
                 modifier = Modifier.padding(all = 16.dp),
             )
 

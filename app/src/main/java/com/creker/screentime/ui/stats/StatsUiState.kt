@@ -6,6 +6,19 @@ import com.creker.screentime.core.DayRange
 import com.creker.screentime.ui.chart.ChartPoint
 import java.time.LocalDate
 
+/**
+ * Total usage vs. the immediately preceding period of the same length — e.g. today
+ * vs. yesterday, or this week vs. last week. Absent when there is no prior period to
+ * compare against (nothing stored for it yet).
+ */
+data class UsageComparison(
+    /** Always positive; [isDecrease] carries the direction. */
+    val percent: Int,
+    val isDecrease: Boolean,
+    /** True for a single-day period ("than yesterday"); false for anything longer. */
+    val comparedToYesterday: Boolean,
+)
+
 /** One row of the app list. */
 data class AppUsageUi(
     val packageName: String,
@@ -25,6 +38,7 @@ data class StatsUiState(
     val canGoForward: Boolean = false,
     /** Time spent in apps over the period — always app usage, whatever [metric] shows. */
     val totalMillis: Long = 0L,
+    val usageChange: UsageComparison? = null,
     val apps: List<AppUsageUi> = emptyList(),
     val chartPoints: List<ChartPoint> = emptyList(),
     /** First day the local history covers, `null` until anything is stored. */

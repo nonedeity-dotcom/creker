@@ -33,6 +33,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class StatsViewModel(
     private val repository: UsageRepository,
@@ -53,6 +55,7 @@ class StatsViewModel(
         val metric: ChartMetric,
         val range: DayRange,
         val rows: List<AppUsageTotal>,
+        val previousTotalMillis: Long,
         val chartPoints: List<ChartPoint>,
     )
 
@@ -61,8 +64,13 @@ class StatsViewModel(
         combine(selection, metric, resolveTicket) { selectedSelection, selectedMetric, _ -> selectedSelection to selectedMetric }
             .flatMapLatest { (selectedSelection, selectedMetric) ->
                 val range = selectedSelection.resolve(repository.today())
-                combine(repository.observeTotals(range), chartPointsFlow(range, selectedMetric)) { rows, points ->
-                    ScreenData(selectedMetric, range, rows, points)
+                val previousRange = range.shiftBy(-range.dayCount)
+                combine(
+                    repository.observeTotals(range),
+                    repository.observeTotals(previousRange),
+                    chartPointsFlow(range, selectedMetric),
+                ) { rows, previousRows, points ->
+                    ScreenData(selectedMetric, range, rows, previousRows.sumOf { it.usageMillis }, points)
                 }
             }
 
@@ -100,11 +108,13 @@ class StatsViewModel(
     val uiState: StateFlow<StatsUiState> =
         combine(screenData, repository.observeEarliestDay(), refreshing) { data, earliest, isRefreshing ->
             val today = repository.today()
+            val totalMillis = data.rows.sumOf { it.usageMillis }
             StatsUiState(
                 metric = data.metric,
                 range = data.range,
                 canGoForward = !data.range.shiftBy(data.range.dayCount).to.isAfter(today),
-                totalMillis = data.rows.sumOf { it.usageMillis },
+                totalMillis = totalMillis,
+                usageChange = usageChange(totalMillis, data.previousTotalMillis, data.range.dayCount),
                 apps = data.rows.toUiRows(),
                 chartPoints = data.chartPoints,
                 earliestStoredDay = earliest,
@@ -158,6 +168,18 @@ class StatsViewModel(
                 refreshing.value = false
             }
         }
+    }
+
+    /** Null when there is nothing stored for the previous period to compare against. */
+    private fun usageChange(current: Long, previous: Long, dayCount: Int): UsageComparison? {
+        if (previous <= 0L) return null
+        val percent = ((current - previous) * 100.0 / previous).roundToInt()
+        if (percent == 0) return null
+        return UsageComparison(
+            percent = abs(percent),
+            isDecrease = percent < 0,
+            comparedToYesterday = dayCount == 1,
+        )
     }
 
     private fun List<AppUsageTotal>.toUiRows(): List<AppUsageUi> {

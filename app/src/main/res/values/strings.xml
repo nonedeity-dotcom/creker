@@ -59,4 +59,10 @@
     <string name="unit_minutes">м</string>
     <string name="unit_seconds">с</string>
     <string name="total_usage_row_label">Общее использование:</string>
+
+    <!-- Change vs. the previous equally-long period -->
+    <string name="usage_change_less_today">На %1$d%% меньше, чем вчера</string>
+    <string name="usage_change_more_today">На %1$d%% больше, чем вчера</string>
+    <string name="usage_change_less_period">На %1$d%% меньше, чем за предыдущий период</string>
+    <string name="usage_change_more_period">На %1$d%% больше, чем за предыдущий период</string>
 </resources>
