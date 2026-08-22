@@ -32,7 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.DayRange
-import com.creker.screentime.ui.stats.formatted
+import com.creker.screentime.ui.stats.formattedCompact
 import java.time.LocalDate
 
 /**
@@ -115,5 +115,10 @@ fun PeriodPicker(
 private fun periodLabel(range: DayRange, today: LocalDate): String = when (range) {
     DayRange(today, today) -> stringResource(R.string.app_detail_today)
     DayRange(today.minusDays(1), today.minusDays(1)) -> stringResource(R.string.app_detail_yesterday)
-    else -> range.formatted()
+    // These are the exact ranges onLastWeek/onLastMonth produce, so a preset stays
+    // named even though nothing distinguishes it from an identically-shaped custom
+    // pick — same trade-off "Сегодня"/"Вчера" above already make.
+    DayRange(today.minusDays(6), today) -> stringResource(R.string.period_preset_last_week)
+    DayRange(today.minusDays(29), today) -> stringResource(R.string.period_preset_last_month)
+    else -> range.formattedCompact()
 }
