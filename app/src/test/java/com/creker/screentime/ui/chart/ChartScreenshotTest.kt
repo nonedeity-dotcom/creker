@@ -1,9 +1,20 @@
 package com.creker.screentime.ui.chart
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
@@ -48,6 +59,38 @@ class ChartScreenshotTest {
                             chartPoints = hourlyPoints,
                             totalUsageMillis = hourlyPoints.sumOf { it.value },
                         )
+                    }
+                }
+            }
+        }
+    }
+
+    // Temporary: isolates whether an oversized child of a TopStart-aligned,
+    // clipToBounds() Box really renders starting at the box's own origin (red stripe
+    // visible at the left edge, nothing else) or is shifted/centered somehow (blue or
+    // green visible instead) -- independent of any of the chart's own pan/zoom logic.
+    @Test
+    fun debugOversizedChildAlignment() {
+        paparazzi.snapshot {
+            CrekerScreenTimeTheme(darkTheme = true) {
+                Surface(Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth()
+                            .height(190.dp)
+                            .clipToBounds(),
+                        contentAlignment = Alignment.TopStart,
+                    ) {
+                        Canvas(
+                            modifier = Modifier
+                                .requiredWidth(800.dp)
+                                .requiredHeight(190.dp),
+                        ) {
+                            drawRect(color = Color.Red, topLeft = Offset.Zero, size = Size(20.dp.toPx(), size.height))
+                            drawRect(color = Color.Blue, topLeft = Offset(400.dp.toPx(), 0f), size = Size(20.dp.toPx(), size.height))
+                            drawRect(color = Color.Green, topLeft = Offset(780.dp.toPx(), 0f), size = Size(20.dp.toPx(), size.height))
+                        }
                     }
                 }
             }
