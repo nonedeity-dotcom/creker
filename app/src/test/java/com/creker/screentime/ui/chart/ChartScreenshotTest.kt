@@ -97,6 +97,35 @@ class ChartScreenshotTest {
         }
     }
 
+    // Same as above, minus clipToBounds() -- isolates whether the clip itself is
+    // somehow the thing recentering the child, rather than plain Box placement.
+    @Test
+    fun debugOversizedChildAlignment_noClip() {
+        paparazzi.snapshot {
+            CrekerScreenTimeTheme(darkTheme = true) {
+                Surface(Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth()
+                            .height(190.dp),
+                        contentAlignment = Alignment.TopStart,
+                    ) {
+                        Canvas(
+                            modifier = Modifier
+                                .requiredWidth(800.dp)
+                                .requiredHeight(190.dp),
+                        ) {
+                            drawRect(color = Color.Red, topLeft = Offset.Zero, size = Size(20.dp.toPx(), size.height))
+                            drawRect(color = Color.Blue, topLeft = Offset(400.dp.toPx(), 0f), size = Size(20.dp.toPx(), size.height))
+                            drawRect(color = Color.Green, topLeft = Offset(780.dp.toPx(), 0f), size = Size(20.dp.toPx(), size.height))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @Test
     fun chartCard_hourlyBars_lightTheme() {
         paparazzi.snapshot {
