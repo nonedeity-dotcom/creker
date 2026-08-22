@@ -1,9 +1,13 @@
 package com.creker.screentime.ui.chart
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DailyTotal
 import com.creker.screentime.core.DurationFormatter
+import com.creker.screentime.core.DurationUnits
 import com.creker.screentime.core.HourlyUsage
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -11,7 +15,7 @@ import java.util.Locale
 
 /** One point on a chart: an hour of a single day, or a day of a longer period. */
 data class ChartPoint(
-    /** Short axis label, e.g. "14" or "Пн". */
+    /** Short axis label, e.g. "14" or "Пн". Hours are unpadded: 0, 1 … 23. */
     val label: String,
     /** Fuller label for the tap tooltip, e.g. "14:00–15:00" or a full date. */
     val detailLabel: String,
@@ -26,7 +30,7 @@ fun List<HourlyUsage>.toHourlyChartPoints(): List<ChartPoint> =
     map {
         val nextHour = (it.hour + 1) % 24
         ChartPoint(
-            label = "%02d".format(it.hour),
+            label = it.hour.toString(),
             detailLabel = "%02d:00–%02d:00".format(it.hour, nextHour),
             value = it.value,
         )
@@ -54,6 +58,15 @@ fun ChartMetric.formatValue(value: Long): String = when (this) {
     ChartMetric.SESSIONS -> value.toString()
 }
 
+/**
+ * The short form used to label a bar, where `01:34:36` would never fit: `1ч 34м`,
+ * `41м`, or a plain count for sessions.
+ */
+fun ChartMetric.formatCompact(value: Long, units: DurationUnits): String = when (this) {
+    ChartMetric.USAGE, ChartMetric.SCREEN_TIME -> DurationFormatter.formatCompact(value, units)
+    ChartMetric.SESSIONS -> value.toString()
+}
+
 /** The headline label shown above a chart's total, for whichever metric is selected. */
 val ChartMetric.headlineLabelRes: Int
     get() = when (this) {
@@ -69,3 +82,12 @@ val ChartMetric.chipLabelRes: Int
         ChartMetric.SESSIONS -> R.string.metric_sessions
         ChartMetric.SCREEN_TIME -> R.string.metric_screen_time
     }
+
+/** The unit suffixes for short durations, read once and reused for every label. */
+@Composable
+fun rememberDurationUnits(): DurationUnits {
+    val hours = stringResource(R.string.unit_hours)
+    val minutes = stringResource(R.string.unit_minutes)
+    val seconds = stringResource(R.string.unit_seconds)
+    return remember(hours, minutes, seconds) { DurationUnits(hours, minutes, seconds) }
+}

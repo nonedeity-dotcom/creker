@@ -4,16 +4,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -22,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.BarChart
@@ -40,11 +36,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -56,26 +52,26 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.ui.theme.MonoNumeric
-import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 enum class ChartMode { Bar, Line }
 
 private const val GRID_LINE_COUNT = 3
-private const val MAX_ZOOM = 4f
+private const val MAX_ZOOM = 6f
 private val TOOLTIP_WIDTH = 132.dp
-private val PLOT_HEIGHT = 150.dp
-private val AXIS_HEIGHT = 18.dp
+private val VIEWPORT_HEIGHT = 190.dp
 
 /** Bar / line switch, shown next to a chart's headline. */
 @Composable
@@ -149,8 +145,11 @@ private fun MetricChip(metric: ChartMetric, icon: ImageVector, selected: ChartMe
 
 /**
  * A bar or filled-line chart, pinch-zoomable and pannable in both directions — wider
- * to spread out crowded points (a day's 24 hours), taller to make close bar heights
- * easier to tell apart.
+ * to spread out crowded points (a day's 24 hours), taller to tell close bars apart.
+ *
+ * Everything is drawn into one canvas, axis labels included. Laying them out as a Row
+ * of weighted Text instead gave each hour a fixed 1/24th of the width, which clipped
+ * "01" down to "0" and ran the labels together.
  *
  * Bars carry their value above them; the line reveals one on tap instead, since a
  * label per point would be unreadable along a curve.
@@ -159,87 +158,89 @@ private fun MetricChip(metric: ChartMetric, icon: ImageVector, selected: ChartMe
 fun UsageChart(
     points: List<ChartPoint>,
     mode: ChartMode,
-    formatValue: (Long) -> String,
+    formatBarLabel: (Long) -> String,
+    formatTooltip: (Long) -> String,
     modifier: Modifier = Modifier,
 ) {
     var zoom by remember(points.size) { mutableFloatStateOf(1f) }
+    var pan by remember(points.size) { mutableStateOf(Offset.Zero) }
     var tappedIndex by remember(points.size, mode) { mutableStateOf<Int?>(null) }
-    val horizontalScrollState = rememberScrollState()
-    val verticalScrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        zoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
-        scope.launch {
-            horizontalScrollState.scrollBy(-panChange.x)
-            verticalScrollState.scrollBy(-panChange.y)
-        }
-    }
 
     val barColor = MaterialTheme.colorScheme.primary
     val fillColor = barColor.copy(alpha = 0.18f)
     val gridColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.13f)
-    val valueColor = MaterialTheme.colorScheme.onPrimaryContainer
-    val axisColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f)
+    val onPanel = MaterialTheme.colorScheme.onPrimaryContainer
     val maxValue = (points.maxOfOrNull { it.value } ?: 0L).coerceAtLeast(1L)
 
     val measurer = rememberTextMeasurer()
-    val valueStyle = TextStyle(
-        fontFamily = MonoNumeric,
-        fontSize = 9.sp,
-        color = valueColor,
-    )
+    val valueStyle = TextStyle(fontFamily = MonoNumeric, fontSize = 10.sp, color = onPanel)
+    val axisStyle = TextStyle(fontFamily = MonoNumeric, fontSize = 10.sp, color = onPanel.copy(alpha = 0.6f))
+    val density = LocalDensity.current
 
     BoxWithConstraints(
-        // The viewport stays put; only the content inside it grows with zoom.
         modifier = modifier
             .fillMaxWidth()
-            .height(PLOT_HEIGHT + AXIS_HEIGHT + 6.dp)
-            .transformable(transformState),
-    ) {
-        val contentWidth = maxWidth * zoom
-        Box(
-            modifier = Modifier
-                .horizontalScroll(horizontalScrollState, enabled = false)
-                .verticalScroll(verticalScrollState, enabled = false),
-        ) {
-            Column(Modifier.width(contentWidth)) {
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(PLOT_HEIGHT * zoom)
-                        .pointerInput(points, mode) {
-                            if (mode != ChartMode.Line) return@pointerInput
-                            detectTapGestures { offset ->
-                                if (points.isEmpty()) return@detectTapGestures
-                                val slot = size.width.toFloat() / points.size
-                                val index = (offset.x / slot).toInt().coerceIn(0, points.size - 1)
-                                tappedIndex = if (tappedIndex == index) null else index
-                            }
-                        },
-                ) {
-                    repeat(GRID_LINE_COUNT) { i ->
-                        val y = size.height * i / (GRID_LINE_COUNT - 1)
-                        drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
-                    }
-                    when (mode) {
-                        ChartMode.Bar -> drawBars(points, maxValue, barColor, measurer, valueStyle, formatValue)
-                        ChartMode.Line -> drawLineArea(points, maxValue, barColor, fillColor)
+            .height(VIEWPORT_HEIGHT)
+            .clipToBounds()
+            // detectTransformGestures consumes the pointers it uses, so a pinch here
+            // is not stolen by the scrolling screen this chart sits on. Panning only
+            // engages once zoomed in, leaving one-finger drags to scroll the page.
+            .pointerInput(points.size) {
+                detectTransformGestures { _, panChange, zoomChange, _ ->
+                    val newZoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
+                    val maxPanX = size.width * (newZoom - 1f)
+                    val maxPanY = size.height * (newZoom - 1f)
+                    zoom = newZoom
+                    pan = if (newZoom > 1f) {
+                        Offset(
+                            (pan.x - panChange.x).coerceIn(0f, maxPanX),
+                            (pan.y - panChange.y).coerceIn(0f, maxPanY),
+                        )
+                    } else {
+                        Offset.Zero
                     }
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                ChartAxisLabels(points, axisColor)
-            }
+            },
+    ) {
+        val contentWidth: Dp = maxWidth * zoom
+        val contentHeight: Dp = maxHeight * zoom
+        Canvas(
+            modifier = Modifier
+                .width(contentWidth)
+                .height(contentHeight)
+                .offset { IntOffset(-pan.x.roundToInt(), -pan.y.roundToInt()) }
+                .pointerInput(points, mode) {
+                    if (mode != ChartMode.Line) return@pointerInput
+                    detectTapGestures { offset ->
+                        if (points.isEmpty()) return@detectTapGestures
+                        val slot = size.width.toFloat() / points.size
+                        val index = (offset.x / slot).toInt().coerceIn(0, points.size - 1)
+                        tappedIndex = if (tappedIndex == index) null else index
+                    }
+                },
+        ) {
+            val topInset = 18.dp.toPx()
+            val axisInset = 20.dp.toPx()
+            val plotBottom = size.height - axisInset
+            val plotHeight = (plotBottom - topInset).coerceAtLeast(1f)
 
-            val index = tappedIndex
-            if (index != null && index < points.size) {
-                ChartTooltip(
-                    point = points[index],
-                    index = index,
-                    pointCount = points.size,
-                    contentWidth = contentWidth,
-                    formatValue = formatValue,
-                )
+            repeat(GRID_LINE_COUNT) { i ->
+                val y = topInset + plotHeight * i / (GRID_LINE_COUNT - 1)
+                drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
             }
+            when (mode) {
+                ChartMode.Bar -> drawBars(points, maxValue, barColor, plotBottom, plotHeight, measurer, valueStyle, formatBarLabel)
+                ChartMode.Line -> drawLineArea(points, maxValue, barColor, fillColor, topInset, plotBottom, plotHeight)
+            }
+            drawAxisLabels(points, plotBottom, measurer, axisStyle)
+        }
+
+        val index = tappedIndex
+        if (index != null && index < points.size) {
+            val slot = contentWidth / points.size
+            val x = (slot * index - with(density) { pan.x.toDp() })
+                .coerceIn(0.dp, (maxWidth - TOOLTIP_WIDTH).coerceAtLeast(0.dp))
+            ChartTooltip(points[index], x, formatTooltip)
         }
     }
 }
@@ -248,17 +249,18 @@ private fun DrawScope.drawBars(
     points: List<ChartPoint>,
     maxValue: Long,
     color: Color,
+    plotBottom: Float,
+    plotHeight: Float,
     measurer: TextMeasurer,
     valueStyle: TextStyle,
-    formatValue: (Long) -> String,
+    formatBarLabel: (Long) -> String,
 ) {
     if (points.isEmpty()) return
     val slotWidth = size.width / points.size
-    val barWidth = (slotWidth * 0.6f).coerceAtLeast(2.dp.toPx())
-    // Room above the tallest bar for its own label.
-    val labelInset = 16.dp.toPx()
-    val plotHeight = (size.height - labelInset).coerceAtLeast(1f)
+    val barWidth = (slotWidth * 0.72f).coerceAtLeast(4.dp.toPx())
     val corner = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+    val labelGap = 3.dp.toPx()
+    var lastLabelRight = Float.NEGATIVE_INFINITY
 
     points.forEachIndexed { index, point ->
         // An hour with no usage gets no bar at all. Drawing a minimum-height stub for
@@ -267,7 +269,7 @@ private fun DrawScope.drawBars(
 
         val barHeight = (plotHeight * point.value.toFloat() / maxValue).coerceAtLeast(2.dp.toPx())
         val left = slotWidth * index + (slotWidth - barWidth) / 2f
-        val top = size.height - barHeight
+        val top = plotBottom - barHeight
         drawRoundRect(
             color = color,
             topLeft = Offset(left, top),
@@ -275,28 +277,40 @@ private fun DrawScope.drawBars(
             cornerRadius = corner,
         )
 
-        val label = measurer.measure(formatValue(point.value), valueStyle)
-        // Only label a bar when the slot is actually wide enough to hold the text —
-        // otherwise neighbouring labels overlap into noise. Zooming in reveals them.
-        if (label.size.width <= slotWidth) {
+        // Label every bar that has room. Bars are sparse — most hours are empty — so
+        // collisions are rare; where two adjacent bars would overlap, the second label
+        // waits until the chart is zoomed in far enough to separate them.
+        val label = measurer.measure(formatBarLabel(point.value), valueStyle)
+        val labelLeft = left + (barWidth - label.size.width) / 2f
+        if (labelLeft > lastLabelRight + labelGap) {
             drawText(
                 textLayoutResult = label,
                 topLeft = Offset(
-                    x = left + (barWidth - label.size.width) / 2f,
+                    x = labelLeft.coerceIn(0f, size.width - label.size.width),
                     y = (top - label.size.height - 2.dp.toPx()).coerceAtLeast(0f),
                 ),
             )
+            lastLabelRight = labelLeft + label.size.width
         }
     }
 }
 
-private fun DrawScope.drawLineArea(points: List<ChartPoint>, maxValue: Long, lineColor: Color, fillColor: Color) {
+private fun DrawScope.drawLineArea(
+    points: List<ChartPoint>,
+    maxValue: Long,
+    lineColor: Color,
+    fillColor: Color,
+    topInset: Float,
+    plotBottom: Float,
+    plotHeight: Float,
+) {
     if (points.size < 2) return
     val slotWidth = size.width / points.size
     val coordinates = points.mapIndexed { index, point ->
-        val x = slotWidth * index + slotWidth / 2f
-        val y = size.height * (1f - point.value.toFloat() / maxValue)
-        Offset(x, y)
+        Offset(
+            x = slotWidth * index + slotWidth / 2f,
+            y = topInset + plotHeight * (1f - point.value.toFloat() / maxValue),
+        )
     }
 
     val linePath = Path().apply {
@@ -305,8 +319,8 @@ private fun DrawScope.drawLineArea(points: List<ChartPoint>, maxValue: Long, lin
     }
     val fillPath = Path().apply {
         addPath(linePath)
-        lineTo(coordinates.last().x, size.height)
-        lineTo(coordinates.first().x, size.height)
+        lineTo(coordinates.last().x, plotBottom)
+        lineTo(coordinates.first().x, plotBottom)
         close()
     }
 
@@ -319,34 +333,33 @@ private fun DrawScope.drawLineArea(points: List<ChartPoint>, maxValue: Long, lin
     coordinates.forEach { drawCircle(color = lineColor, radius = 3.dp.toPx(), center = it) }
 }
 
-/** One label per point, always — zooming in gives each one the room it needs. */
-@Composable
-private fun ChartAxisLabels(points: List<ChartPoint>, color: Color) {
+/** One label per point where they fit, skipping any that would run into the last one drawn. */
+private fun DrawScope.drawAxisLabels(
+    points: List<ChartPoint>,
+    plotBottom: Float,
+    measurer: TextMeasurer,
+    axisStyle: TextStyle,
+) {
     if (points.isEmpty()) return
-    Row(modifier = Modifier.fillMaxWidth()) {
-        points.forEach { point ->
-            Text(
-                text = point.label,
-                style = MaterialTheme.typography.labelSmall,
-                color = color,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                modifier = Modifier.weight(1f),
+    val slotWidth = size.width / points.size
+    val gap = 4.dp.toPx()
+    var lastRight = Float.NEGATIVE_INFINITY
+
+    points.forEachIndexed { index, point ->
+        val label = measurer.measure(point.label, axisStyle)
+        val left = slotWidth * index + (slotWidth - label.size.width) / 2f
+        if (left > lastRight + gap) {
+            drawText(
+                textLayoutResult = label,
+                topLeft = Offset(left.coerceIn(0f, size.width - label.size.width), plotBottom + 5.dp.toPx()),
             )
+            lastRight = left + label.size.width
         }
     }
 }
 
 @Composable
-private fun ChartTooltip(
-    point: ChartPoint,
-    index: Int,
-    pointCount: Int,
-    contentWidth: Dp,
-    formatValue: (Long) -> String,
-) {
-    val slotWidth = contentWidth / pointCount
-    val x = (slotWidth * index).coerceAtMost((contentWidth - TOOLTIP_WIDTH).coerceAtLeast(0.dp))
+private fun ChartTooltip(point: ChartPoint, x: Dp, formatTooltip: (Long) -> String) {
     Surface(
         modifier = Modifier
             .padding(top = 4.dp)
@@ -363,7 +376,7 @@ private fun ChartTooltip(
                 color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.75f),
             )
             Text(
-                text = formatValue(point.value),
+                text = formatTooltip(point.value),
                 style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoNumeric),
                 color = MaterialTheme.colorScheme.inverseOnSurface,
             )

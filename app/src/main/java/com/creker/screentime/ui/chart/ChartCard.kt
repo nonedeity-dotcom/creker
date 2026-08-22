@@ -85,10 +85,13 @@ fun ChartCard(
 
             if (chartPoints.any { it.value > 0L }) {
                 Spacer(modifier = Modifier.height(18.dp))
+                val units = rememberDurationUnits()
                 UsageChart(
                     points = chartPoints,
                     mode = mode,
-                    formatValue = metric::formatValue,
+                    // Bars get the short form: "01:34:36" over a bar is unreadable.
+                    formatBarLabel = { metric.formatCompact(it, units) },
+                    formatTooltip = metric::formatValue,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)),
                 )
             }

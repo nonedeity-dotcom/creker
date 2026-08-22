@@ -111,6 +111,13 @@ fun StatsScreen(
                 modifier = Modifier.padding(all = 16.dp),
             )
 
+            if (state.apps.isNotEmpty()) {
+                TotalUsageRow(
+                    totalMillis = state.totalMillis,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+
             if (state.hasIncompleteHistory) {
                 HistoryNotice(state.earliestStoredDay)
             }
@@ -135,7 +142,7 @@ fun StatsScreen(
                         text = stringResource(R.string.sorted_by_usage),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp),
                     )
                     LazyColumn(
                         modifier = Modifier

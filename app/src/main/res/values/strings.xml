@@ -56,4 +56,9 @@
 
     <!-- Export -->
     <string name="export_action">Сохранить данные</string>
+    <!-- Duration unit suffixes -->
+    <string name="unit_hours">ч</string>
+    <string name="unit_minutes">м</string>
+    <string name="unit_seconds">с</string>
+    <string name="total_usage_row_label">Общее использование:</string>
 </resources>
