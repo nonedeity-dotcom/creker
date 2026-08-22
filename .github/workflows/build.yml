@@ -24,6 +24,16 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
+      - name: Render screenshots
+        run: ./gradlew recordPaparazziDebug
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: app/src/test/snapshots/images/**/*.png
+          if-no-files-found: error
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
