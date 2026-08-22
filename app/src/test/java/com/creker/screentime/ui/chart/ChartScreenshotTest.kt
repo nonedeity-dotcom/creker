@@ -73,4 +73,43 @@ class ChartScreenshotTest {
             }
         }
     }
+
+    /** Screen time is now selectable, so its segment has to fit alongside the other two. */
+    @Test
+    fun chartCard_screenTimeSelected_darkTheme() {
+        paparazzi.snapshot {
+            CrekerScreenTimeTheme(darkTheme = true) {
+                Surface {
+                    Box(Modifier.padding(16.dp)) {
+                        ChartCard(
+                            metric = ChartMetric.SCREEN_TIME,
+                            onMetricChange = {},
+                            chartPoints = hourlyPoints,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** A period with nothing recorded: the card used to just end in blank space here. */
+    @Test
+    fun chartCard_noData_darkTheme() {
+        val emptyPoints = (0..23).map {
+            ChartPoint(label = it.toString(), detailLabel = "%02d:00".format(it), value = 0L)
+        }
+        paparazzi.snapshot {
+            CrekerScreenTimeTheme(darkTheme = true) {
+                Surface {
+                    Box(Modifier.padding(16.dp)) {
+                        ChartCard(
+                            metric = ChartMetric.SCREEN_TIME,
+                            onMetricChange = {},
+                            chartPoints = emptyPoints,
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

@@ -84,4 +84,49 @@ class TotalTimeScreenshotTest {
             }
         }
     }
+
+    /**
+     * The real case that broke the ring: a phone with two dozen tracked apps, most of
+     * them a fraction of a percent. Every slice used to be inflated to a visible
+     * minimum, so the arcs summed well past 360 and wrapped back over the start, with
+     * every icon stacked on its neighbours.
+     */
+    @Test
+    fun totalTimeScreen_manyApps_darkTheme() {
+        // A realistic long tail: four apps carry most of the time, twenty share the rest.
+        val heavy = listOf("TikTok" to 142, "Instagram" to 96, "YouTube" to 74, "WhatsApp" to 60)
+        val tail = (1..20).map { "App $it" to 2 }
+        val all = heavy + tail
+        val totalMinutes = all.sumOf { it.second }
+        val manyApps = all.mapIndexed { index, (name, mins) ->
+            TotalTimeAppUi(
+                packageName = "com.example.app$index",
+                label = name,
+                icon = null,
+                usageMillis = minutes(mins),
+                change = if (index % 3 == 0) UsageComparison(7, index % 2 == 0, false) else null,
+                shareOfTotal = mins.toFloat() / totalMinutes,
+            )
+        }
+
+        paparazzi.snapshot {
+            CrekerScreenTimeTheme(darkTheme = true) {
+                Surface(Modifier) {
+                    TotalTimeScreen(
+                        state = state.copy(
+                            apps = manyApps,
+                            totalMillis = minutes(totalMinutes),
+                        ),
+                        today = today,
+                        onBack = {},
+                        onPrevious = {},
+                        onNext = {},
+                        onSelectPeriod = {},
+                        onSelectCustomRange = { _, _ -> },
+                        onAppClick = {},
+                    )
+                }
+            }
+        }
+    }
 }

@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
@@ -41,6 +42,9 @@ import com.creker.screentime.ui.theme.MonoNumeric
 
 /** A muted, theme-independent green — the one color in this palette that always reads as "good". */
 private val ImprovedGreen = Color(0xFF5FB86A)
+
+/** Keeps the card the same height whether or not the period has any data to plot. */
+private val EMPTY_CHART_HEIGHT = 96.dp
 
 /**
  * The headline panel: the metric picker, a bar/line toggle, the total for whichever
@@ -109,8 +113,8 @@ fun ChartCard(
             }
 
             val units = rememberDurationUnits()
+            Spacer(modifier = Modifier.height(12.dp))
             if (chartPoints.any { it.value > 0L }) {
-                Spacer(modifier = Modifier.height(12.dp))
                 UsageChart(
                     points = chartPoints,
                     mode = mode,
@@ -119,6 +123,24 @@ fun ChartCard(
                     formatTooltip = metric::formatValue,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)),
                 )
+            } else {
+                // An all-zero chart used to render nothing at all, leaving the card
+                // ending in blank space with no way to tell "no usage this period"
+                // apart from something being broken — most visible on the screen-time
+                // metric, which stays empty until a sync has seen screen on/off events.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(EMPTY_CHART_HEIGHT),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.chart_no_data),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
 
             if (totalUsageMillis != null) {

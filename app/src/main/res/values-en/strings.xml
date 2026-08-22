@@ -55,6 +55,7 @@
     <string name="unit_minutes">m</string>
     <string name="unit_seconds">s</string>
     <string name="total_usage_row_label">Total usage:</string>
+    <string name="chart_no_data">No data for this period</string>
 
     <string name="usage_change_less_today">%1$d%% less than yesterday</string>
     <string name="usage_change_more_today">%1$d%% more than yesterday</string>
@@ -63,6 +64,7 @@
 
     <string name="total_time_title">Total time</string>
     <string name="ring_chart_title">App usage breakdown</string>
+    <string name="ring_chart_other">Other</string>
     <string name="usage_analysis_section">Usage analysis</string>
     <string name="time_saved_label">Time saved</string>
 </resources>

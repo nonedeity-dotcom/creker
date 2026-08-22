@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.ShowChart
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.Icon
@@ -60,6 +61,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
@@ -120,10 +122,14 @@ private fun ChartModeButton(icon: ImageVector, selected: Boolean, onClick: () ->
 }
 
 /**
- * Usage / sessions switch, shown at the top of a chart card — a single full-width
- * pill split evenly in two, the selected half filled solid, rather than a row of
- * auto-sized chips: with just two options this reads as one control to pick between,
- * not a list to scan.
+ * Metric switch, shown at the top of a chart card — a single full-width pill split
+ * evenly between the metrics, the selected one filled solid, rather than a row of
+ * auto-sized chips: this reads as one control to pick between, not a list to scan.
+ *
+ * All three metrics are offered. Screen time was left out when this replaced the
+ * earlier chip row, which stranded the whole device-wide screen-time feature — its
+ * table, its queries and its keyguard subtraction were all still built and stored,
+ * with nothing in the UI able to ask for them.
  */
 @Composable
 fun MetricSelector(selected: ChartMetric, onSelect: (ChartMetric) -> Unit, modifier: Modifier = Modifier) {
@@ -136,6 +142,7 @@ fun MetricSelector(selected: ChartMetric, onSelect: (ChartMetric) -> Unit, modif
     ) {
         MetricSegment(ChartMetric.USAGE, Icons.Rounded.AccessTime, selected, onSelect, Modifier.weight(1f))
         MetricSegment(ChartMetric.SESSIONS, Icons.Rounded.TouchApp, selected, onSelect, Modifier.weight(1f))
+        MetricSegment(ChartMetric.SCREEN_TIME, Icons.Rounded.PhoneAndroid, selected, onSelect, Modifier.weight(1f))
     }
 }
 
@@ -155,13 +162,21 @@ private fun MetricSegment(
             .clip(RoundedCornerShape(10.dp))
             .background(background)
             .clickable { onSelect(metric) }
-            .padding(vertical = 10.dp),
+            .padding(vertical = 10.dp, horizontal = 4.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = stringResource(metric.chipLabelRes), color = content, style = MaterialTheme.typography.labelLarge)
+        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        // Three segments to a screen width leaves each about a third of what two did,
+        // so the label is capped rather than allowed to wrap the pill onto two lines.
+        Text(
+            text = stringResource(metric.chipLabelRes),
+            color = content,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

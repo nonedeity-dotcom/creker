@@ -122,7 +122,7 @@ fun TotalTimeScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             UsageRingChart(
-                slices = state.apps.map { RingSlice(label = it.label, icon = it.icon, share = it.shareOfTotal) },
+                slices = ringSlices(state.apps, stringResource(R.string.ring_chart_other)),
                 totalLabel = DurationFormatter.format(state.totalMillis),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -181,6 +181,25 @@ fun TotalTimeScreen(
         )
     }
 }
+
+/**
+ * The ring shows the biggest few apps individually and everything else as one slice.
+ * A phone with two dozen tracked apps is normal, and drawing a slice per app gave a
+ * ring of hairline bands with every icon stacked on top of its neighbours -- the tail
+ * carries no readable information at that width, only the fact that it exists.
+ */
+private fun ringSlices(apps: List<TotalTimeAppUi>, otherLabel: String): List<RingSlice> {
+    if (apps.size <= MAX_RING_SLICES) {
+        return apps.map { RingSlice(label = it.label, icon = it.icon, share = it.shareOfTotal) }
+    }
+    val leading = apps.take(MAX_RING_SLICES - 1)
+    val otherShare = apps.drop(MAX_RING_SLICES - 1).sumOf { it.shareOfTotal.toDouble() }.toFloat()
+    return leading.map { RingSlice(label = it.label, icon = it.icon, share = it.shareOfTotal) } +
+        RingSlice(label = otherLabel, icon = null, share = otherShare)
+}
+
+/** Including the grouped "other" slice — apps are already sorted by usage, descending. */
+private const val MAX_RING_SLICES = 6
 
 @Composable
 private fun TimeSavedCard(savedMillis: Long, modifier: Modifier = Modifier) {

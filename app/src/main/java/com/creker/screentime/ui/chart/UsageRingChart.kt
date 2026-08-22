@@ -34,11 +34,22 @@ data class RingSlice(
     val share: Float,
 )
 
+private val RING_INSET = 22.dp
+private val RING_STROKE = 16.dp
+private val ICON_SIZE = 26.dp
+
+/** Degrees trimmed off each arc so neighbouring slices read as separate bands. */
+private const val SLICE_GAP_DEGREES = 3f
+
 /**
  * A donut chart split into one arc per app, its icon sitting just outside the ring at
  * that arc's midpoint, with the period's total spelled out in the center. Distinct
  * hues per slice, cycling if there are more apps than colors -- the app's own single
  * amber accent can't tell neighbouring slices apart the way this needs to.
+ *
+ * Callers are expected to have already grouped a long tail of tiny slices into one
+ * (see TotalTimeScreen): shares are drawn exactly as given, so the arcs only add up
+ * to a full circle if the shares themselves do.
  */
 @Composable
 fun UsageRingChart(slices: List<RingSlice>, totalLabel: String, modifier: Modifier = Modifier) {
@@ -47,49 +58,64 @@ fun UsageRingChart(slices: List<RingSlice>, totalLabel: String, modifier: Modifi
 
     BoxWithConstraints(modifier = modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
         val diameter = minOf(maxWidth, maxHeight)
-        val ringInset = 22.dp
-        val strokeWidth = 16.dp
+        val ringDiameter = diameter - RING_INSET * 2
+        val iconRadius = ringDiameter / 2
 
         Canvas(
             modifier = Modifier
-                .size(diameter - ringInset * 2)
+                .size(ringDiameter)
                 .align(Alignment.Center),
         ) {
-            val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
+            val stroke = Stroke(width = RING_STROKE.toPx(), cap = StrokeCap.Butt)
             if (slices.isEmpty() || slices.all { it.share <= 0f }) {
                 drawArc(color = trackColor, startAngle = 0f, sweepAngle = 360f, useCenter = false, style = stroke)
             } else {
                 var startAngle = -90f
                 slices.forEachIndexed { index, slice ->
-                    if (slice.share <= 0f) return@forEachIndexed
-                    // A gap between slices, not a full circle's worth of one color:
-                    // sweepAngle is trimmed slightly so adjacent arcs don't visually merge.
-                    val sweep = (360f * slice.share).coerceAtLeast(1f)
-                    drawArc(
-                        color = RingPalette[index % RingPalette.size],
-                        startAngle = startAngle + 1.5f,
-                        sweepAngle = (sweep - 3f).coerceAtLeast(1f),
-                        useCenter = false,
-                        style = stroke,
-                    )
+                    val sweep = 360f * slice.share
+                    // No minimum sweep: inflating a sub-degree slice to a visible one
+                    // made every slice past the first few overshoot, so with a couple
+                    // dozen apps the arcs summed past 360 and wrapped back over the
+                    // start of the ring. A slice too thin to draw is simply skipped --
+                    // the caller groups those into one "other" slice instead.
+                    if (sweep > SLICE_GAP_DEGREES) {
+                        drawArc(
+                            color = RingPalette[index % RingPalette.size],
+                            startAngle = startAngle + SLICE_GAP_DEGREES / 2f,
+                            sweepAngle = sweep - SLICE_GAP_DEGREES,
+                            useCenter = false,
+                            style = stroke,
+                        )
+                    }
                     startAngle += sweep
                 }
             }
         }
 
-        Text(text = totalLabel, style = MaterialTheme.typography.titleLarge.copy(fontFamily = MonoNumeric), color = onSurface)
+        Text(
+            text = totalLabel,
+            style = MaterialTheme.typography.titleLarge.copy(fontFamily = MonoNumeric),
+            color = onSurface,
+        )
+
+        // An icon needs roughly its own width of arc to sit in without colliding with
+        // its neighbour's. Anything thinner is left unlabelled rather than stacked.
+        val minShareForIcon = if (iconRadius > 0.dp) {
+            (ICON_SIZE.value * 1.15f) / (2f * Math.PI.toFloat() * iconRadius.value)
+        } else {
+            Float.MAX_VALUE
+        }
 
         var iconStartAngle = -90f
-        slices.forEachIndexed { index, slice ->
-            if (slice.share <= 0f) return@forEachIndexed
-            val sweep = (360f * slice.share).coerceAtLeast(1f)
+        slices.forEach { slice ->
+            val sweep = 360f * slice.share
             val midAngleDeg = iconStartAngle + sweep / 2f
             iconStartAngle += sweep
+            if (slice.share < minShareForIcon) return@forEach
 
             // A plain (non-remember()) computation: remember() inside a loop over a
             // list whose size can change between recompositions risks misaligning
             // Compose's slot table, and cos/sin here are cheap enough not to need it.
-            val iconRadius = (diameter - ringInset * 2) / 2
             val midAngleRad = Math.toRadians(midAngleDeg.toDouble())
             val offsetX = iconRadius * cos(midAngleRad).toFloat()
             val offsetY = iconRadius * sin(midAngleRad).toFloat()
@@ -98,14 +124,18 @@ fun UsageRingChart(slices: List<RingSlice>, totalLabel: String, modifier: Modifi
                 modifier = Modifier
                     .align(Alignment.Center)
                     .offset(x = offsetX, y = offsetY)
-                    .size(26.dp)
+                    .size(ICON_SIZE)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center,
             ) {
                 val icon = slice.icon
                 if (icon != null) {
-                    Image(bitmap = icon, contentDescription = slice.label, modifier = Modifier.size(22.dp).clip(CircleShape))
+                    Image(
+                        bitmap = icon,
+                        contentDescription = slice.label,
+                        modifier = Modifier.size(22.dp).clip(CircleShape),
+                    )
                 } else {
                     Icon(
                         imageVector = Icons.Rounded.Android,
