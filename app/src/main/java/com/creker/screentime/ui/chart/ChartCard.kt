@@ -50,6 +50,8 @@ fun ChartCard(
     headlineLabel: String = stringResource(metric.headlineLabelRes),
     /** Total app usage over the period, shown as a row at the bottom of this same card. */
     totalUsageMillis: Long? = null,
+    /** False hides the big headline figure, leaving only the label and [subtitle]. */
+    showHeadlineValue: Boolean = true,
     subtitle: @Composable ColumnScope.() -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(ChartMode.Bar) }
@@ -82,11 +84,13 @@ fun ChartCard(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                     )
-                    Text(
-                        text = metric.formatValue(total),
-                        style = MaterialTheme.typography.displayMedium,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
+                    if (showHeadlineValue) {
+                        Text(
+                            text = metric.formatValue(total),
+                            style = MaterialTheme.typography.displayMedium,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
                 }
                 ChartModeToggle(mode = mode, onModeChange = { mode = it })
             }
