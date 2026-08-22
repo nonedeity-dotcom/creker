@@ -1,6 +1,7 @@
 package com.creker.screentime.ui.chart
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.BarChart
@@ -45,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -64,12 +66,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.ui.theme.MonoNumeric
-import kotlin.math.roundToInt
 
 enum class ChartMode { Bar, Line }
 
@@ -176,11 +176,22 @@ fun UsageChart(
 ) {
     // Keyed on points itself, not points.size: switching from one day to another
     // hourly chart keeps the same 24-point count, so a size-only key left an old
-    // zoom/pan carried over onto the new data — the chart opened already scrolled
+    // zoom/scroll carried over onto the new data — the chart opened already scrolled
     // off to wherever the previous day's gesture had left it, with no way back to
-    // hour 0 since pan can only move forward from there.
+    // hour 0 since pan could only move forward from there.
     var zoom by remember(points) { mutableFloatStateOf(1f) }
-    var pan by remember(points) { mutableStateOf(Offset.Zero) }
+    // ScrollState instead of a manually offset()'d + clipToBounds() Box: a plain Box
+    // centered an oversized requiredWidth() child regardless of contentAlignment (see
+    // the debugOversizedChildAlignment screenshot tests), which opened the chart on
+    // roughly its middle hour with no way to pan back to hour 0. horizontalScroll /
+    // verticalScroll are Compose's own primitive for exactly this — wide content
+    // inside a narrow viewport — and position their content from a scroll offset
+    // (0 = the content's own start), not from Box alignment, so they sidestep that
+    // bug entirely instead of working around it. Driven programmatically (enabled =
+    // false, moved only via dispatchRawDelta) since zoom/pan are already handled by
+    // the same hand-rolled pinch/drag gesture detectors as before.
+    val horizontalScrollState = remember(points) { ScrollState(0) }
+    val verticalScrollState = remember(points) { ScrollState(0) }
     var tappedIndex by remember(points, mode) { mutableStateOf<Int?>(null) }
 
     val barColor = MaterialTheme.colorScheme.primary
@@ -195,14 +206,9 @@ fun UsageChart(
     val density = LocalDensity.current
 
     BoxWithConstraints(
-        // The canvas is now routinely wider than the viewport (requiredWidth), and Box
-        // centers an oversized child by default — which opened on the middle of the
-        // chart instead of hour 0. Pin it to the start so panning has one fixed origin.
-        contentAlignment = Alignment.TopStart,
         modifier = modifier
             .fillMaxWidth()
             .height(VIEWPORT_HEIGHT)
-            .clipToBounds()
             // detectTransformGestures consumed every gesture over this area, including
             // a plain vertical one-finger drag -- which meant touching the chart ever
             // blocked the screen's own scroll, not just while pinching. Split it: pinch
@@ -217,15 +223,14 @@ fun UsageChart(
                         if (pressed.size < 2) continue
                         val zoomChange = event.calculateZoom()
                         val panChange = event.calculatePan()
-                        val newZoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
-                        val baseWidthPx = maxOf(size.width.toFloat(), MIN_SLOT_WIDTH.toPx() * points.size)
-                        val maxPanX = (baseWidthPx * newZoom - size.width).coerceAtLeast(0f)
-                        val maxPanY = size.height * (newZoom - 1f)
-                        zoom = newZoom
-                        pan = Offset(
-                            (pan.x - panChange.x).coerceIn(0f, maxPanX),
-                            (pan.y - panChange.y).coerceIn(0f, maxPanY),
-                        )
+                        zoom = (zoom * zoomChange).coerceIn(1f, MAX_ZOOM)
+                        // dispatchRawDelta is a plain (non-suspend) function that moves
+                        // the scroll offset directly and auto-clamps it to [0, content
+                        // size - viewport size], which the ScrollState itself tracks
+                        // from the Canvas's actual measured width/height below — no
+                        // manual maxPanX/maxPanY bookkeeping needed anymore.
+                        horizontalScrollState.dispatchRawDelta(-panChange.x)
+                        verticalScrollState.dispatchRawDelta(-panChange.y)
                         pressed.forEach { it.consume() }
                     } while (event.changes.any { it.pressed })
                 }
@@ -235,9 +240,7 @@ fun UsageChart(
             // one-finger drag is left untouched here and reaches the page's scroll.
             .pointerInput(points.size) {
                 detectHorizontalDragGestures { change, dragAmount ->
-                    val baseWidthPx = maxOf(size.width.toFloat(), MIN_SLOT_WIDTH.toPx() * points.size)
-                    val maxPanX = (baseWidthPx * zoom - size.width).coerceAtLeast(0f)
-                    pan = pan.copy(x = (pan.x - dragAmount).coerceIn(0f, maxPanX))
+                    horizontalScrollState.dispatchRawDelta(-dragAmount)
                     change.consume()
                 }
             },
@@ -245,47 +248,54 @@ fun UsageChart(
         val baseWidth: Dp = maxOf(maxWidth, MIN_SLOT_WIDTH * points.size)
         val contentWidth: Dp = baseWidth * zoom
         val contentHeight: Dp = maxHeight * zoom
-        Canvas(
-            // requiredWidth/requiredHeight, not width/height: the latter clamps to the
-            // incoming constraints from BoxWithConstraints (the viewport), which
-            // silently capped the canvas back down to viewport size regardless of
-            // contentWidth/Height — defeating both MIN_SLOT_WIDTH and pinch-zoom.
-            // required* forces the size past that, which is exactly what a child
-            // meant to overflow a clipToBounds() + manually panned viewport needs.
-            modifier = Modifier
-                .requiredWidth(contentWidth)
-                .requiredHeight(contentHeight)
-                .offset { IntOffset(-pan.x.roundToInt(), -pan.y.roundToInt()) }
-                .pointerInput(points, mode) {
-                    if (mode != ChartMode.Line) return@pointerInput
-                    detectTapGestures { offset ->
-                        if (points.isEmpty()) return@detectTapGestures
-                        val slot = size.width.toFloat() / points.size
-                        val index = (offset.x / slot).toInt().coerceIn(0, points.size - 1)
-                        tappedIndex = if (tappedIndex == index) null else index
-                    }
-                },
-        ) {
-            val topInset = 18.dp.toPx()
-            val axisInset = 20.dp.toPx()
-            val plotBottom = size.height - axisInset
-            val plotHeight = (plotBottom - topInset).coerceAtLeast(1f)
 
-            repeat(GRID_LINE_COUNT) { i ->
-                val y = topInset + plotHeight * i / (GRID_LINE_COUNT - 1)
-                drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .horizontalScroll(horizontalScrollState, enabled = false)
+                .verticalScroll(verticalScrollState, enabled = false),
+        ) {
+            Canvas(
+                // requiredWidth/requiredHeight, not width/height: the latter clamps to
+                // the incoming constraints from the scroll container (the viewport),
+                // which silently capped the canvas back down to viewport size
+                // regardless of contentWidth/Height — defeating both MIN_SLOT_WIDTH and
+                // pinch-zoom. required* forces the size past that, which is exactly
+                // what content meant to overflow a scrollable viewport needs.
+                modifier = Modifier
+                    .requiredWidth(contentWidth)
+                    .requiredHeight(contentHeight)
+                    .pointerInput(points, mode) {
+                        if (mode != ChartMode.Line) return@pointerInput
+                        detectTapGestures { offset ->
+                            if (points.isEmpty()) return@detectTapGestures
+                            val slot = size.width.toFloat() / points.size
+                            val index = (offset.x / slot).toInt().coerceIn(0, points.size - 1)
+                            tappedIndex = if (tappedIndex == index) null else index
+                        }
+                    },
+            ) {
+                val topInset = 18.dp.toPx()
+                val axisInset = 20.dp.toPx()
+                val plotBottom = size.height - axisInset
+                val plotHeight = (plotBottom - topInset).coerceAtLeast(1f)
+
+                repeat(GRID_LINE_COUNT) { i ->
+                    val y = topInset + plotHeight * i / (GRID_LINE_COUNT - 1)
+                    drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+                }
+                when (mode) {
+                    ChartMode.Bar -> drawBars(points, maxValue, barColor, plotBottom, plotHeight, measurer, valueStyle, formatBarLabel)
+                    ChartMode.Line -> drawLineArea(points, maxValue, barColor, fillColor, topInset, plotBottom, plotHeight)
+                }
+                drawAxisLabels(points, plotBottom, measurer, axisStyle)
             }
-            when (mode) {
-                ChartMode.Bar -> drawBars(points, maxValue, barColor, plotBottom, plotHeight, measurer, valueStyle, formatBarLabel)
-                ChartMode.Line -> drawLineArea(points, maxValue, barColor, fillColor, topInset, plotBottom, plotHeight)
-            }
-            drawAxisLabels(points, plotBottom, measurer, axisStyle)
         }
 
         val index = tappedIndex
         if (index != null && index < points.size) {
             val slot = contentWidth / points.size
-            val x = (slot * index - with(density) { pan.x.toDp() })
+            val x = (slot * index - with(density) { horizontalScrollState.value.toDp() })
                 .coerceIn(0.dp, (maxWidth - TOOLTIP_WIDTH).coerceAtLeast(0.dp))
             ChartTooltip(points[index], x, formatTooltip)
         }
