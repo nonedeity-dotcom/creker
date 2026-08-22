@@ -13,6 +13,7 @@ import com.creker.screentime.core.PeriodSelection
 import com.creker.screentime.core.StatsPeriod
 import com.creker.screentime.core.resolve
 import com.creker.screentime.core.shiftBy
+import com.creker.screentime.core.usageChange
 import com.creker.screentime.data.UsageRepository
 import com.creker.screentime.data.system.AppInfoProvider
 import com.creker.screentime.ui.chart.ChartPoint
@@ -33,8 +34,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 class StatsViewModel(
     private val repository: UsageRepository,
@@ -170,18 +169,6 @@ class StatsViewModel(
                 refreshing.value = false
             }
         }
-    }
-
-    /** Null when there is nothing stored for the previous period to compare against. */
-    private fun usageChange(current: Long, previous: Long, dayCount: Int): UsageComparison? {
-        if (previous <= 0L) return null
-        val percent = ((current - previous) * 100.0 / previous).roundToInt()
-        if (percent == 0) return null
-        return UsageComparison(
-            percent = abs(percent),
-            isDecrease = percent < 0,
-            comparedToYesterday = dayCount == 1,
-        )
     }
 
     private fun List<AppUsageTotal>.toUiRows(): List<AppUsageUi> {

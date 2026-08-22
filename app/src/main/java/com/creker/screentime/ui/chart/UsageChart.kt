@@ -18,13 +18,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,8 +32,6 @@ import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.ShowChart
 import androidx.compose.material.icons.rounded.TouchApp
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -76,6 +74,12 @@ private const val GRID_LINE_COUNT = 3
 private const val MAX_ZOOM = 6f
 private val TOOLTIP_WIDTH = 132.dp
 private val VIEWPORT_HEIGHT = 150.dp
+private val Y_AXIS_WIDTH = 34.dp
+
+/** Matches the Canvas's own topInset/axisInset in [UsageChart], so the value labels
+ * drawn outside it (fixed, not scrolled by panning) line up with its gridlines. */
+private val PLOT_TOP_INSET = 18.dp
+private val PLOT_AXIS_INSET = 20.dp
 
 /**
  * Every point gets at least this much width. A crowded chart (24 hourly points) then
@@ -91,7 +95,7 @@ fun ChartModeToggle(mode: ChartMode, onModeChange: (ChartMode) -> Unit, modifier
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(3.dp),
     ) {
         ChartModeButton(Icons.Rounded.BarChart, selected = mode == ChartMode.Bar) { onModeChange(ChartMode.Bar) }
@@ -102,7 +106,7 @@ fun ChartModeToggle(mode: ChartMode, onModeChange: (ChartMode) -> Unit, modifier
 @Composable
 private fun ChartModeButton(icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     val background = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
-    val tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
+    val tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
@@ -115,52 +119,60 @@ private fun ChartModeButton(icon: ImageVector, selected: Boolean, onClick: () ->
     }
 }
 
-/** Usage / sessions / screen-time switch, shown below a chart's headline. */
+/**
+ * Usage / sessions switch, shown at the top of a chart card — a single full-width
+ * pill split evenly in two, the selected half filled solid, rather than a row of
+ * auto-sized chips: with just two options this reads as one control to pick between,
+ * not a list to scan.
+ */
 @Composable
 fun MetricSelector(selected: ChartMetric, onSelect: (ChartMetric) -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        MetricChip(ChartMetric.USAGE, Icons.Rounded.AccessTime, selected, onSelect)
-        MetricChip(ChartMetric.SESSIONS, Icons.Rounded.TouchApp, selected, onSelect)
+        MetricSegment(ChartMetric.USAGE, Icons.Rounded.AccessTime, selected, onSelect, Modifier.weight(1f))
+        MetricSegment(ChartMetric.SESSIONS, Icons.Rounded.TouchApp, selected, onSelect, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun MetricChip(metric: ChartMetric, icon: ImageVector, selected: ChartMetric, onSelect: (ChartMetric) -> Unit) {
+private fun MetricSegment(
+    metric: ChartMetric,
+    icon: ImageVector,
+    selected: ChartMetric,
+    onSelect: (ChartMetric) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val isSelected = metric == selected
-    FilterChip(
-        selected = isSelected,
-        onClick = { onSelect(metric) },
-        label = { Text(stringResource(metric.chipLabelRes)) },
-        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
-        // The chips sit on the warm headline panel, so they take their colours from it
-        // rather than from the default surface palette, which washed out against it.
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = Color.Transparent,
-            labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            iconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-        ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = isSelected,
-            borderColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f),
-            selectedBorderColor = Color.Transparent,
-        ),
-    )
+    val background = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val content = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(background)
+            .clickable { onSelect(metric) }
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = stringResource(metric.chipLabelRes), color = content, style = MaterialTheme.typography.labelLarge)
+    }
 }
 
 /**
  * A bar or filled-line chart, pinch-zoomable and pannable in both directions — wider
  * to spread out crowded points (a day's 24 hours), taller to tell close bars apart.
+ * A fixed y-axis label column sits to its left, outside the pannable area.
  *
- * Everything is drawn into one canvas, axis labels included. Laying them out as a Row
- * of weighted Text instead gave each hour a fixed 1/24th of the width, which clipped
- * "01" down to "0" and ran the labels together.
+ * The x-axis's hour labels are drawn into the canvas itself rather than laid out as a
+ * Row of weighted Text, which gave each hour a fixed 1/24th of the width and clipped
+ * "01" down to "0".
  *
  * Bars carry their value above them; the line reveals one on tap instead, since a
  * label per point would be unreadable along a curve.
@@ -195,8 +207,8 @@ fun UsageChart(
 
     val barColor = MaterialTheme.colorScheme.primary
     val fillColor = barColor.copy(alpha = 0.18f)
-    val gridColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.13f)
-    val onPanel = MaterialTheme.colorScheme.onPrimaryContainer
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val onPanel = MaterialTheme.colorScheme.onSurface
     val maxValue = (points.maxOfOrNull { it.value } ?: 0L).coerceAtLeast(1L)
 
     val measurer = rememberTextMeasurer()
@@ -204,10 +216,16 @@ fun UsageChart(
     val axisStyle = TextStyle(fontFamily = MonoNumeric, fontSize = 10.sp, color = onPanel.copy(alpha = 0.6f))
     val density = LocalDensity.current
 
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(VIEWPORT_HEIGHT)
+    Row(modifier = modifier.fillMaxWidth()) {
+        ChartYAxisLabels(
+            maxValue = maxValue,
+            formatValue = formatBarLabel,
+            style = axisStyle,
+        )
+        BoxWithConstraints(
+            modifier = Modifier
+                .weight(1f)
+                .height(VIEWPORT_HEIGHT)
             // detectTransformGestures consumed every gesture over this area, including
             // a plain vertical one-finger drag -- which meant touching the chart ever
             // blocked the screen's own scroll, not just while pinching. Split it: pinch
@@ -276,8 +294,8 @@ fun UsageChart(
                         }
                     },
             ) {
-                val topInset = 18.dp.toPx()
-                val axisInset = 20.dp.toPx()
+                val topInset = PLOT_TOP_INSET.toPx()
+                val axisInset = PLOT_AXIS_INSET.toPx()
                 val plotBottom = size.height - axisInset
                 val plotHeight = (plotBottom - topInset).coerceAtLeast(1f)
 
@@ -300,6 +318,30 @@ fun UsageChart(
                 .coerceIn(0.dp, (maxWidth - TOOLTIP_WIDTH).coerceAtLeast(0.dp))
             ChartTooltip(points[index], x, formatTooltip)
         }
+        }
+    }
+}
+
+/**
+ * Value labels for the chart's y-axis (max, half, zero), drawn outside the pannable
+ * viewport so they stay put while the chart itself scrolls horizontally underneath —
+ * unlike the per-bar and per-hour labels, which are drawn inside the canvas and pan
+ * along with it. [PLOT_TOP_INSET]/[PLOT_AXIS_INSET] mirror the Canvas's own insets so
+ * these line up with its gridlines.
+ */
+@Composable
+private fun ChartYAxisLabels(maxValue: Long, formatValue: (Long) -> String, style: TextStyle) {
+    Column(
+        modifier = Modifier
+            .width(Y_AXIS_WIDTH)
+            .height(VIEWPORT_HEIGHT)
+            .padding(top = PLOT_TOP_INSET, bottom = PLOT_AXIS_INSET, end = 6.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+        horizontalAlignment = Alignment.End,
+    ) {
+        Text(text = formatValue(maxValue), style = style)
+        Text(text = formatValue(maxValue / 2), style = style)
+        Text(text = formatValue(0L), style = style)
     }
 }
 

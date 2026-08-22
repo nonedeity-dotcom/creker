@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
+import com.creker.screentime.core.UsageComparison
 import com.creker.screentime.ui.chart.ChartCard
 import com.creker.screentime.ui.chart.ChartPoint
 
@@ -55,7 +56,7 @@ fun UsageOverviewCard(
                 Icon(
                     imageVector = Icons.Rounded.CalendarMonth,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(15.dp),
                 )
                 Text(
@@ -64,7 +65,7 @@ fun UsageOverviewCard(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.2.sp,
                     ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
                     modifier = Modifier.padding(start = 6.dp),
                 )
 
@@ -73,7 +74,7 @@ fun UsageOverviewCard(
                         .padding(horizontal = 10.dp)
                         .size(3.dp)
                         .background(
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                             shape = CircleShape,
                         ),
                 )
@@ -81,7 +82,7 @@ fun UsageOverviewCard(
                 Icon(
                     imageVector = Icons.Rounded.Apps,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(15.dp),
                 )
                 Text(
@@ -90,7 +91,7 @@ fun UsageOverviewCard(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.2.sp,
                     ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
                     modifier = Modifier.padding(start = 6.dp),
                 )
             }

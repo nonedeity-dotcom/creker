@@ -11,6 +11,7 @@ import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.UsageStreaks
 import com.creker.screentime.core.shiftBy
+import com.creker.screentime.core.usageChange
 import com.creker.screentime.data.UsageRepository
 import com.creker.screentime.data.system.AppInfoProvider
 import com.creker.screentime.ui.chart.ChartPoint
@@ -49,6 +50,7 @@ class AppDetailViewModel(
         val range: DayRange,
         val metric: ChartMetric,
         val total: AppPeriodTotal,
+        val previousUsageMillis: Long,
         val chartPoints: List<ChartPoint>,
     )
 
@@ -56,10 +58,14 @@ class AppDetailViewModel(
     private val screenData: Flow<ScreenData> =
         combine(range, metric) { r, m -> r to m }
             .flatMapLatest { (currentRange, currentMetric) ->
+                val previousRange = currentRange.shiftBy(-currentRange.dayCount)
                 combine(
                     repository.observeAppPeriodTotal(packageName, currentRange),
+                    repository.observeAppPeriodTotal(packageName, previousRange),
                     chartPointsFlow(currentRange, currentMetric),
-                ) { total, points -> ScreenData(currentRange, currentMetric, total, points) }
+                ) { total, previousTotal, points ->
+                    ScreenData(currentRange, currentMetric, total, previousTotal.usageMillis, points)
+                }
             }
 
     /**
@@ -107,6 +113,7 @@ class AppDetailViewModel(
                 range = data.range,
                 canGoForward = !data.range.shiftBy(data.range.dayCount).to.isAfter(today),
                 usageMillis = data.total.usageMillis,
+                usageChange = usageChange(data.total.usageMillis, data.previousUsageMillis, data.range.dayCount),
                 launchCount = data.total.launchCount,
                 averagePerDayMillis = data.total.usageMillis / data.range.dayCount,
                 currentStreakDays = UsageStreaks.currentStreak(history, today),

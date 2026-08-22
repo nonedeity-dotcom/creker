@@ -3,21 +3,9 @@ package com.creker.screentime.ui.stats
 import androidx.compose.ui.graphics.ImageBitmap
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
+import com.creker.screentime.core.UsageComparison
 import com.creker.screentime.ui.chart.ChartPoint
 import java.time.LocalDate
-
-/**
- * Total usage vs. the immediately preceding period of the same length — e.g. today
- * vs. yesterday, or this week vs. last week. Absent when there is no prior period to
- * compare against (nothing stored for it yet).
- */
-data class UsageComparison(
-    /** Always positive; [isDecrease] carries the direction. */
-    val percent: Int,
-    val isDecrease: Boolean,
-    /** True for a single-day period ("than yesterday"); false for anything longer. */
-    val comparedToYesterday: Boolean,
-)
 
 /** One row of the app list. */
 data class AppUsageUi(

@@ -46,7 +46,8 @@ class ChartScreenshotTest {
                             metric = ChartMetric.USAGE,
                             onMetricChange = {},
                             chartPoints = hourlyPoints,
-                            totalUsageMillis = hourlyPoints.sumOf { it.value },
+                            usageChangePercent = 18,
+                            usageChangeIsDecrease = true,
                         )
                     }
                 }
@@ -64,7 +65,8 @@ class ChartScreenshotTest {
                             metric = ChartMetric.USAGE,
                             onMetricChange = {},
                             chartPoints = hourlyPoints,
-                            totalUsageMillis = hourlyPoints.sumOf { it.value },
+                            usageChangePercent = 18,
+                            usageChangeIsDecrease = true,
                         )
                     }
                 }

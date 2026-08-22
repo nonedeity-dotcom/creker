@@ -1,6 +1,8 @@
 package com.creker.screentime.ui.chart
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -12,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -26,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -39,11 +42,13 @@ import com.creker.screentime.ui.theme.MonoNumeric
 private val ImprovedGreen = Color(0xFF5FB86A)
 
 /**
- * The headline panel: the total for whichever metric is selected, a bar/line toggle,
- * the metric picker, and the chart itself.
+ * The headline panel: the metric picker, a bar/line toggle, the total for whichever
+ * metric is selected, and the chart itself.
  *
- * Shared by the overview screen (all apps) and one app's detail screen — only the
- * headline wording and what surrounds the panel differ between them.
+ * Shared by the overview screen (all apps) and one app's detail screen — only what
+ * surrounds the panel differs between them. Nearly transparent with a thin outline
+ * rather than a filled, tinted surface, so it reads as a frame around the chart
+ * instead of another block of color competing with the page around it.
  */
 @Composable
 fun ChartCard(
@@ -51,10 +56,9 @@ fun ChartCard(
     onMetricChange: (ChartMetric) -> Unit,
     chartPoints: List<ChartPoint>,
     modifier: Modifier = Modifier,
-    headlineLabel: String = stringResource(metric.headlineLabelRes),
     /** Total app usage over the period, shown as a row at the bottom of this same card. */
     totalUsageMillis: Long? = null,
-    /** False hides the big headline figure, leaving only the label and [subtitle]. */
+    /** False hides the big headline figure, leaving only [subtitle] and the toggle. */
     showHeadlineValue: Boolean = true,
     /** Percent change vs. the previous equally-long period; null hides the chip entirely. */
     usageChangePercent: Int? = null,
@@ -67,45 +71,39 @@ fun ChartCard(
     val total = chartPoints.sumOf { it.value }
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(22.dp)),
         shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // A faint bake across the panel, lit at the top like the icon it came from.
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0f),
-                        ),
-                    ),
-                )
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
-            Row(verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = headlineLabel.uppercase(),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    )
-                    if (showHeadlineValue) {
-                        Text(
-                            text = metric.formatValue(total),
-                            style = MaterialTheme.typography.displayMedium,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
-                }
+            MetricSelector(selected = metric, onSelect = onMetricChange, modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { subtitle() }
                 ChartModeToggle(mode = mode, onModeChange = { mode = it })
             }
-            subtitle()
-            Spacer(modifier = Modifier.height(10.dp))
-            MetricSelector(selected = metric, onSelect = onMetricChange)
+            if (showHeadlineValue) {
+                Text(
+                    text = metric.formatValue(total),
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                if (usageChangePercent != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    UsageChangeChip(
+                        percent = usageChangePercent,
+                        isDecrease = usageChangeIsDecrease,
+                        comparedToYesterday = usageChangeComparedToYesterday,
+                    )
+                }
+            }
 
             val units = rememberDurationUnits()
             if (chartPoints.any { it.value > 0L }) {
@@ -122,30 +120,30 @@ fun ChartCard(
 
             if (totalUsageMillis != null) {
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Rounded.Visibility,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = stringResource(R.string.total_usage_row_label),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = DurationFormatter.formatWithUnits(totalUsageMillis, units),
                         style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoNumeric),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
 
-                if (usageChangePercent != null) {
+                if (!showHeadlineValue && usageChangePercent != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     UsageChangeChip(
                         percent = usageChangePercent,
@@ -169,7 +167,7 @@ private fun UsageChangeChip(percent: Int, isDecrease: Boolean, comparedToYesterd
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Icon(
-            imageVector = Icons.Rounded.Visibility,
+            imageVector = if (isDecrease) Icons.Rounded.ArrowDownward else Icons.Rounded.ArrowUpward,
             contentDescription = null,
             tint = tint,
             modifier = Modifier.size(16.dp),

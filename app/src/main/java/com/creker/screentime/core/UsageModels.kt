@@ -1,6 +1,8 @@
 package com.creker.screentime.core
 
 import java.time.LocalDate
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * A single event as reported by the system, reduced to what the aggregation cares
@@ -88,6 +90,31 @@ data class AppPeriodTotal(
     val usageMillis: Long,
     val launchCount: Int,
 )
+
+/**
+ * Total usage vs. the immediately preceding period of the same length — e.g. today
+ * vs. yesterday, or this week vs. last week. Absent when there is no prior period to
+ * compare against (nothing stored for it yet).
+ */
+data class UsageComparison(
+    /** Always positive; [isDecrease] carries the direction. */
+    val percent: Int,
+    val isDecrease: Boolean,
+    /** True for a single-day period ("than yesterday"); false for anything longer. */
+    val comparedToYesterday: Boolean,
+)
+
+/** Null when there is nothing stored for the previous period to compare against. */
+fun usageChange(current: Long, previous: Long, dayCount: Int): UsageComparison? {
+    if (previous <= 0L) return null
+    val percent = ((current - previous) * 100.0 / previous).roundToInt()
+    if (percent == 0) return null
+    return UsageComparison(
+        percent = abs(percent),
+        isDecrease = percent < 0,
+        comparedToYesterday = dayCount == 1,
+    )
+}
 
 /** Which quantity a chart or detail screen is currently showing. */
 enum class ChartMetric {
