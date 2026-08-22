@@ -147,6 +147,26 @@ class UsageRepository(
     }
 
     /**
+     * Merges rows from a CSV [exportRows] previously produced elsewhere -- the "load
+     * data" flow for moving to a new phone. Only fills in (package, date) or (date)
+     * combinations this device has no row for yet; anything already recorded here
+     * (this device's own, freshly synced history) is left untouched. Returns how many
+     * rows were actually written, which may be fewer than [rows].size if some overlap
+     * with what is already stored.
+     */
+    suspend fun importRows(rows: List<UsageExportRow>): Int = withContext(ioDispatcher) {
+        val appEntities = rows.filter { it.kind == "app" }.map {
+            AppUsageEntity(packageName = it.packageName, date = it.date, usageMillis = it.valueMillis, launchCount = it.launchCount)
+        }
+        val deviceEntities = rows.filter { it.kind == "screen" }.map {
+            DeviceUsageEntity(date = it.date, screenMillis = it.valueMillis)
+        }
+        val appIds = if (appEntities.isNotEmpty()) usageDao.importAll(appEntities) else emptyList()
+        val deviceIds = if (deviceEntities.isNotEmpty()) deviceUsageDao.importAll(deviceEntities) else emptyList()
+        appIds.count { it != -1L } + deviceIds.count { it != -1L }
+    }
+
+    /**
      * Pulls everything the system still remembers into the local database.
      *
      * On a first run this imports the whole retention window, which is the last seven

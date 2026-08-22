@@ -83,6 +83,14 @@ abstract class UsageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertAll(rows: List<AppUsageEntity>)
 
+    /**
+     * Used by the "load data" import, not [sync]: ignores rows whose (package, date)
+     * already exists, so an old phone's backup can only fill in days this device
+     * hasn't recorded itself, never overwrite them. Returns -1 per row Room skipped.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun importAll(rows: List<AppUsageEntity>): List<Long>
+
     @Query("DELETE FROM app_usage WHERE date BETWEEN :fromDate AND :toDate")
     abstract suspend fun deleteRange(fromDate: String, toDate: String)
 
@@ -123,6 +131,10 @@ abstract class DeviceUsageDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertAll(rows: List<DeviceUsageEntity>)
+
+    /** Same import-only, fill-gaps-not-overwrite behavior as [UsageDao.importAll]. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun importAll(rows: List<DeviceUsageEntity>): List<Long>
 
     @Query("DELETE FROM device_usage WHERE date BETWEEN :fromDate AND :toDate")
     abstract suspend fun deleteRange(fromDate: String, toDate: String)

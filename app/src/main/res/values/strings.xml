@@ -52,8 +52,12 @@
     <string name="period_preset_last_month">Последний месяц</string>
     <string name="period_preset_custom">Свой период</string>
 
-    <!-- Export -->
+    <!-- Export / import -->
     <string name="export_action">Сохранить данные</string>
+    <string name="import_action">Загрузить данные</string>
+    <string name="import_success">Импортировано записей: %1$d</string>
+    <string name="import_empty">В файле не нашлось подходящих данных</string>
+    <string name="import_error">Не удалось прочитать файл</string>
     <!-- Duration unit suffixes -->
     <string name="unit_hours">ч</string>
     <string name="unit_minutes">м</string>

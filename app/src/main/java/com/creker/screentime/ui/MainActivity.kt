@@ -1,6 +1,7 @@
 package com.creker.screentime.ui
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,7 +26,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creker.screentime.AppContainer
+import com.creker.screentime.R
 import com.creker.screentime.ScreenTimeApplication
+import com.creker.screentime.core.UsageCsvReader
 import com.creker.screentime.core.UsageCsvWriter
 import com.creker.screentime.data.system.UsageAccess
 import com.creker.screentime.ui.appdetail.AppDetailScreen
@@ -102,6 +105,31 @@ private fun ScreenTimeApp(container: AppContainer) {
         }
     }
 
+    // "Load data": the reverse of export, for moving to a new phone -- pick the CSV a
+    // previous export wrote, and merge whatever rows this device doesn't already have
+    // into the local database. "*/*" rather than "text/csv" because many file pickers
+    // don't tag a CSV with that MIME type reliably; content is validated by the parser
+    // itself instead.
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }.getOrNull()
+            }
+            if (text == null) {
+                Toast.makeText(context, R.string.import_error, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            val rows = UsageCsvReader.parse(text)
+            if (rows.isEmpty()) {
+                Toast.makeText(context, R.string.import_empty, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            val imported = container.usageRepository.importRows(rows)
+            Toast.makeText(context, context.getString(R.string.import_success, imported), Toast.LENGTH_LONG).show()
+        }
+    }
+
     BackHandler(enabled = selectedPackage != null || totalTimeOpen) {
         if (selectedPackage != null) selectedPackage = null else totalTimeOpen = false
     }
@@ -164,6 +192,7 @@ private fun ScreenTimeApp(container: AppContainer) {
             onAppClick = { selectedPackage = it },
             onSelectMetric = statsViewModel::selectMetric,
             onExport = { exportLauncher.launch("screen_time_${LocalDate.now().format(EXPORT_FILE_DATE_FORMATTER)}.csv") },
+            onImport = { importLauncher.launch("*/*") },
             onOpenTotalTime = { totalTimeOpen = true },
         )
     }

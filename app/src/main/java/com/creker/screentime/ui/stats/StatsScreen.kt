@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,6 +54,7 @@ fun StatsScreen(
     onAppClick: (String) -> Unit,
     onSelectMetric: (ChartMetric) -> Unit,
     onExport: () -> Unit,
+    onImport: () -> Unit,
     onOpenTotalTime: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,6 +66,12 @@ fun StatsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = onImport) {
+                        Icon(
+                            imageVector = Icons.Rounded.FileUpload,
+                            contentDescription = stringResource(R.string.import_action),
+                        )
+                    }
                     IconButton(onClick = onExport) {
                         Icon(
                             imageVector = Icons.Rounded.FileDownload,
