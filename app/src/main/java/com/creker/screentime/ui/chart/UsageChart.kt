@@ -186,6 +186,10 @@ fun UsageChart(
     val density = LocalDensity.current
 
     BoxWithConstraints(
+        // The canvas is now routinely wider than the viewport (requiredWidth), and Box
+        // centers an oversized child by default — which opened on the middle of the
+        // chart instead of hour 0. Pin it to the start so panning has one fixed origin.
+        contentAlignment = Alignment.TopStart,
         modifier = modifier
             .fillMaxWidth()
             .height(VIEWPORT_HEIGHT)
