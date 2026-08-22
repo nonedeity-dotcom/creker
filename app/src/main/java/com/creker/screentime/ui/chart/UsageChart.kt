@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -211,11 +213,16 @@ fun UsageChart(
         val baseWidth: Dp = maxOf(maxWidth, MIN_SLOT_WIDTH * points.size)
         val contentWidth: Dp = baseWidth * zoom
         val contentHeight: Dp = maxHeight * zoom
-        println("CREKER_DEBUG maxWidth=$maxWidth minSlotTotal=${MIN_SLOT_WIDTH * points.size} baseWidth=$baseWidth contentWidth=$contentWidth points=${points.size}")
         Canvas(
+            // requiredWidth/requiredHeight, not width/height: the latter clamps to the
+            // incoming constraints from BoxWithConstraints (the viewport), which
+            // silently capped the canvas back down to viewport size regardless of
+            // contentWidth/Height — defeating both MIN_SLOT_WIDTH and pinch-zoom.
+            // required* forces the size past that, which is exactly what a child
+            // meant to overflow a clipToBounds() + manually panned viewport needs.
             modifier = Modifier
-                .width(contentWidth)
-                .height(contentHeight)
+                .requiredWidth(contentWidth)
+                .requiredHeight(contentHeight)
                 .offset { IntOffset(-pan.x.roundToInt(), -pan.y.roundToInt()) }
                 .pointerInput(points, mode) {
                     if (mode != ChartMode.Line) return@pointerInput

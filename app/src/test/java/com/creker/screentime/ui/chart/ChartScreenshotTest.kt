@@ -1,13 +1,9 @@
 package com.creker.screentime.ui.chart
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
@@ -52,23 +48,6 @@ class ChartScreenshotTest {
                             chartPoints = hourlyPoints,
                             totalUsageMillis = hourlyPoints.sumOf { it.value },
                         )
-                    }
-                }
-            }
-        }
-    }
-
-    // Temporary: the hourly chart's axis labels still collide as if the widening fix
-    // (MIN_SLOT_WIDTH driving a canvas wider than the viewport) never took effect.
-    // This isolates BoxWithConstraints.maxWidth from everything else to see what
-    // Paparazzi is actually reporting as the available width.
-    @Test
-    fun debugMaxWidth() {
-        paparazzi.snapshot {
-            CrekerScreenTimeTheme(darkTheme = true) {
-                Surface(Modifier.fillMaxSize()) {
-                    BoxWithConstraints(Modifier.padding(16.dp)) {
-                        Text("maxWidth=$maxWidth", color = Color.White)
                     }
                 }
             }
