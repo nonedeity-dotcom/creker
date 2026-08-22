@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
@@ -236,7 +238,12 @@ private fun StatTile(
     accent: Boolean = false,
 ) {
     Column(
+        // A fixed minimum height, not just intrinsic row-matching: labels vary enough
+        // in length (from "Сеансы" to "Текущая серия") that matching heights only
+        // within each row still left row-to-row differences, so tiles didn't read as
+        // one even grid.
         modifier = modifier
+            .heightIn(min = 92.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(16.dp),
@@ -257,16 +264,22 @@ private fun StatTile(
                 )
             }
             Spacer(modifier = Modifier.width(10.dp))
+            // Single line, not wrapped: a wrapped label was the other half of why
+            // tiles came out uneven, on top of just looking crowded in a narrow tile.
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall,
             color = if (accent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

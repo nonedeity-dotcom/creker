@@ -33,7 +33,7 @@
     <string name="app_detail_average_label">Average per day</string>
     <string name="app_detail_current_streak_label">Current streak</string>
     <string name="app_detail_longest_streak_label">Longest streak</string>
-    <string name="app_detail_max_day_label">Highest single-day usage</string>
+    <string name="app_detail_max_day_label">Max day</string>
     <string name="app_detail_install_date_label">Install date</string>
     <string name="app_detail_days_format">%1$d d</string>
 
