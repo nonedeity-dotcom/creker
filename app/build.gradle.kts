@@ -53,6 +53,12 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+tasks.withType<Test> {
+    testLogging {
+        showStandardStreams = true
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

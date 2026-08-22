@@ -211,6 +211,7 @@ fun UsageChart(
         val baseWidth: Dp = maxOf(maxWidth, MIN_SLOT_WIDTH * points.size)
         val contentWidth: Dp = baseWidth * zoom
         val contentHeight: Dp = maxHeight * zoom
+        println("CREKER_DEBUG maxWidth=$maxWidth minSlotTotal=${MIN_SLOT_WIDTH * points.size} baseWidth=$baseWidth contentWidth=$contentWidth points=${points.size}")
         Canvas(
             modifier = Modifier
                 .width(contentWidth)
