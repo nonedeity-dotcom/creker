@@ -162,12 +162,12 @@ private fun MetricSegment(
             .clip(RoundedCornerShape(10.dp))
             .background(background)
             .clickable { onSelect(metric) }
-            .padding(vertical = 10.dp, horizontal = 4.dp),
+            .padding(vertical = 10.dp, horizontal = 2.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(16.dp))
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(5.dp))
         // Three segments to a screen width leaves each about a third of what two did,
         // so the label is capped rather than allowed to wrap the pill onto two lines.
         Text(

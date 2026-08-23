@@ -45,6 +45,10 @@
     <string name="metric_usage">Использование</string>
     <string name="metric_sessions">Сеансы</string>
     <string name="metric_screen_time">Экранное время</string>
+    <!-- Short forms for the three-segment picker, where the full names do not fit. -->
+    <string name="metric_usage_short">Приложения</string>
+    <string name="metric_sessions_short">Сеансы</string>
+    <string name="metric_screen_time_short">Экран</string>
     <string name="total_device_screen_time_label">Время на экране</string>
 
     <!-- Period presets (app detail screen) -->

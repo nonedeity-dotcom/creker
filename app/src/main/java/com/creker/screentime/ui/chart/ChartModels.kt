@@ -67,12 +67,17 @@ fun ChartMetric.formatCompact(value: Long, units: DurationUnits): String = when 
     ChartMetric.SESSIONS -> value.toString()
 }
 
-/** The short chip label for the metric picker. */
+/**
+ * The metric picker's own label. Deliberately shorter than the metric's full name:
+ * three segments to a phone width leaves each about a third of what two did, and the
+ * full names ("Использование", "Экранное время") came out ellipsized to "Использо…"
+ * there. The segment's icon carries the rest of the meaning.
+ */
 val ChartMetric.chipLabelRes: Int
     get() = when (this) {
-        ChartMetric.USAGE -> R.string.metric_usage
-        ChartMetric.SESSIONS -> R.string.metric_sessions
-        ChartMetric.SCREEN_TIME -> R.string.metric_screen_time
+        ChartMetric.USAGE -> R.string.metric_usage_short
+        ChartMetric.SESSIONS -> R.string.metric_sessions_short
+        ChartMetric.SCREEN_TIME -> R.string.metric_screen_time_short
     }
 
 /** The unit suffixes for short durations, read once and reused for every label. */
