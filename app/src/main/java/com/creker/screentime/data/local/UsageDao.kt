@@ -1,5 +1,6 @@
 package com.creker.screentime.data.local
 
+import android.database.Cursor
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -124,6 +125,15 @@ abstract class DeviceUsageDao {
     /** Per-day device-wide screen-on time, for the multi-day chart in screen-time mode. */
     @Query("SELECT date, screen_millis AS usage_millis FROM device_usage WHERE date BETWEEN :fromDate AND :toDate")
     abstract fun observeDailyTotals(fromDate: String, toDate: String): Flow<List<DateTotalRow>>
+
+    /**
+     * Synchronous, cursor-returning variant of [observeDailyTotals] for [UsageProvider] —
+     * `ContentProvider.query()` is a synchronous callback, not a suspend function, and Room
+     * hands back a raw [Cursor] for exactly this case instead of running the query through
+     * coroutines.
+     */
+    @Query("SELECT date, screen_millis FROM device_usage WHERE date BETWEEN :fromDate AND :toDate ORDER BY date ASC")
+    abstract fun queryDailyTotalsCursor(fromDate: String, toDate: String): Cursor
 
     /** Every stored row, for the "save all data" export. */
     @Query("SELECT * FROM device_usage ORDER BY date ASC")

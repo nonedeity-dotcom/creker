@@ -20,6 +20,16 @@
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
+    <!--
+        Held by other apps (e.g. a habit tracker) to read device_usage via UsageProvider.
+        protectionLevel="normal" means it's granted automatically to anything that declares
+        it — no runtime dialog — but a random app still can't read this without knowing the
+        exact permission name and asking for it explicitly.
+    -->
+    <permission
+        android:name="com.creker.screentime.permission.READ_USAGE"
+        android:protectionLevel="normal" />
+
     <application
         android:name=".ScreenTimeApplication"
         android:allowBackup="false"
@@ -39,6 +49,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <provider
+            android:name=".data.provider.UsageProvider"
+            android:authorities="com.creker.screentime.provider"
+            android:exported="true"
+            android:readPermission="com.creker.screentime.permission.READ_USAGE" />
     </application>
 
 </manifest>
