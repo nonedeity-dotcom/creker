@@ -7,6 +7,7 @@ import android.database.Cursor
 import android.net.Uri
 import com.creker.screentime.contract.UsageContract
 import com.creker.screentime.data.local.ScreenTimeDatabase
+import com.creker.screentime.data.settings.SharingSettings
 
 /**
  * Read-only window into [device_usage][com.creker.screentime.data.local.DeviceUsageEntity]
@@ -26,6 +27,10 @@ import com.creker.screentime.data.local.ScreenTimeDatabase
  *   epoch millis up to which that day's total is complete — see
  *   [UsageContract.COLUMN_UPDATED_AT]) — one row per day that has data; days with no synced
  *   data are simply absent, same as the Room table.
+ * - Answers nothing at all while the user has switched sharing off in creker's settings
+ *   (see [SharingSettings]): the cursor is null, which every caller already has to handle
+ *   as "this device has no creker data", so switching it off degrades to the same quiet
+ *   no-op as creker not being installed.
  * - Requires the caller to hold [UsageContract.READ_PERMISSION] (declared by this app,
  *   `protectionLevel="normal"` — granted automatically to any app that lists it, no runtime
  *   prompt, but at least requires knowing the exact name rather than being wide open to every
@@ -44,6 +49,9 @@ class UsageProvider : ContentProvider() {
     ): Cursor? {
         if (MATCHER.match(uri) != DEVICE_USAGE) return null
         val context = context ?: return null
+        // Checked per query, not cached, so turning sharing off takes effect immediately
+        // rather than at the next process start.
+        if (!SharingSettings.isEnabled(context)) return null
         val fromDate = selectionArgs?.getOrNull(UsageContract.ARG_FROM_DATE) ?: return null
         val toDate = selectionArgs?.getOrNull(UsageContract.ARG_TO_DATE) ?: return null
 

@@ -70,4 +70,20 @@
     <string name="ring_chart_other">Other</string>
     <string name="usage_analysis_section">Usage analysis</string>
     <string name="time_saved_label">Time saved</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_open">Settings</string>
+    <string name="settings_access_section">Usage access</string>
+    <string name="settings_access_granted">Access granted</string>
+    <string name="settings_access_denied">No access</string>
+    <string name="settings_access_granted_body">Android is handing over usage statistics, so screen time is being counted.</string>
+    <string name="settings_access_denied_body">Without this access the system reports nothing: no new days will appear, though days already stored stay.</string>
+    <string name="settings_access_action">Open system settings</string>
+    <string name="settings_sharing_section">Data for other apps</string>
+    <string name="settings_sharing_switch">Share data with other apps</string>
+    <string name="settings_sharing_on_body">An app on this same phone can ask how much screen time a day had, if it holds creker\'s permission. The data never leaves the device — nothing goes to the internet.</string>
+    <string name="settings_sharing_off_body">Other apps get no answer — to them it looks as if creker were not installed. No Burnout will stop ticking “screen time is fine” on its own; you will have to tick it yourself.</string>
+    <string name="settings_backup_section">Backup</string>
+    <string name="settings_backup_body">The whole history is written to a CSV file wherever you choose, and read back from there. Useful when moving to another phone.</string>
 </resources>

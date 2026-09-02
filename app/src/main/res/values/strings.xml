@@ -81,4 +81,20 @@
     <string name="ring_chart_other">Другие</string>
     <string name="usage_analysis_section">Анализ использования</string>
     <string name="time_saved_label">Сэкономлено времени</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_open">Настройки</string>
+    <string name="settings_access_section">Доступ к статистике</string>
+    <string name="settings_access_granted">Доступ есть</string>
+    <string name="settings_access_denied">Доступа нет</string>
+    <string name="settings_access_granted_body">Android отдаёт статистику использования, приложение считает экранное время.</string>
+    <string name="settings_access_denied_body">Без этого доступа система не отдаёт статистику: новые дни не появятся, а уже сохранённые останутся.</string>
+    <string name="settings_access_action">Открыть системные настройки</string>
+    <string name="settings_sharing_section">Данные другим приложениям</string>
+    <string name="settings_sharing_switch">Отдавать данные другим приложениям</string>
+    <string name="settings_sharing_on_body">Приложение на этом же телефоне может спросить, сколько было экранного времени за день, если у него есть разрешение creker. Данные не покидают устройство: наружу, в интернет, не уходит ничего.</string>
+    <string name="settings_sharing_off_body">Запросы других приложений остаются без ответа — для них это выглядит так, будто creker не установлен. No Burnout перестанет сам отмечать «Экранное время в норме», отмечать придётся вручную.</string>
+    <string name="settings_backup_section">Резервная копия</string>
+    <string name="settings_backup_body">Вся история пишется в CSV-файл туда, куда укажешь, и читается обратно оттуда же. Пригодится при переезде на другой телефон.</string>
 </resources>

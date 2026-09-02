@@ -30,10 +30,12 @@ import com.creker.screentime.R
 import com.creker.screentime.ScreenTimeApplication
 import com.creker.screentime.core.UsageCsvReader
 import com.creker.screentime.core.UsageCsvWriter
+import com.creker.screentime.data.settings.SharingSettings
 import com.creker.screentime.data.system.UsageAccess
 import com.creker.screentime.ui.appdetail.AppDetailScreen
 import com.creker.screentime.ui.appdetail.AppDetailViewModel
 import com.creker.screentime.ui.permission.PermissionScreen
+import com.creker.screentime.ui.settings.SettingsScreen
 import com.creker.screentime.ui.stats.StatsScreen
 import com.creker.screentime.ui.stats.StatsViewModel
 import com.creker.screentime.ui.theme.CrekerScreenTimeTheme
@@ -76,6 +78,8 @@ private fun ScreenTimeApp(container: AppContainer) {
     var settingsUnavailable by remember { mutableStateOf(false) }
     var selectedPackage by remember { mutableStateOf<String?>(null) }
     var totalTimeOpen by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(false) }
+    var sharingEnabled by remember { mutableStateOf(SharingSettings.isEnabled(context)) }
 
     // The permission is granted on a system screen, so the only reliable moment to
     // re-check it is when this activity comes back to the foreground.
@@ -130,8 +134,38 @@ private fun ScreenTimeApp(container: AppContainer) {
         }
     }
 
-    BackHandler(enabled = selectedPackage != null || totalTimeOpen) {
-        if (selectedPackage != null) selectedPackage = null else totalTimeOpen = false
+    BackHandler(enabled = selectedPackage != null || totalTimeOpen || settingsOpen) {
+        when {
+            selectedPackage != null -> selectedPackage = null
+            settingsOpen -> settingsOpen = false
+            else -> totalTimeOpen = false
+        }
+    }
+
+    if (settingsOpen) {
+        SettingsScreen(
+            // `hasAccess` is re-read on every ON_RESUME, which is exactly when the user
+            // returns from the system screen below — so the status here updates itself
+            // without this screen having to poll anything.
+            hasUsageAccess = hasAccess,
+            sharingEnabled = sharingEnabled,
+            onBack = { settingsOpen = false },
+            onOpenUsageAccessSettings = {
+                // Unlike the permission screen, this one has nowhere to park a persistent
+                // error line, and a vendor without the deep link would otherwise look like
+                // a dead button.
+                if (!UsageAccess.openSettings(context)) {
+                    Toast.makeText(context, R.string.permission_settings_missing, Toast.LENGTH_LONG).show()
+                }
+            },
+            onSharingChange = { enabled ->
+                SharingSettings.setEnabled(context, enabled)
+                sharingEnabled = enabled
+            },
+            onExport = { exportLauncher.launch("screen_time_${LocalDate.now().format(EXPORT_FILE_DATE_FORMATTER)}.csv") },
+            onImport = { importLauncher.launch("*/*") },
+        )
+        return
     }
 
     if (!hasAccess) {
@@ -144,6 +178,7 @@ private fun ScreenTimeApp(container: AppContainer) {
                 if (hasAccess) statsViewModel.refresh()
             },
             settingsUnavailable = settingsUnavailable,
+            onOpenAppSettings = { settingsOpen = true },
         )
         return
     }
@@ -191,8 +226,7 @@ private fun ScreenTimeApp(container: AppContainer) {
             onRefresh = statsViewModel::refresh,
             onAppClick = { selectedPackage = it },
             onSelectMetric = statsViewModel::selectMetric,
-            onExport = { exportLauncher.launch("screen_time_${LocalDate.now().format(EXPORT_FILE_DATE_FORMATTER)}.csv") },
-            onImport = { importLauncher.launch("*/*") },
+            onOpenSettings = { settingsOpen = true },
             onOpenTotalTime = { totalTimeOpen = true },
         )
     }
