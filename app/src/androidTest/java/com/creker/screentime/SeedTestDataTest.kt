@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.creker.screentime.contract.UsageContract
 import com.creker.screentime.data.local.DeviceUsageEntity
 import com.creker.screentime.data.local.ScreenTimeDatabase
 import kotlinx.coroutines.runBlocking
@@ -34,22 +35,43 @@ class SeedTestDataTest {
     @Test
     fun seedTodayScreenTimeAndVerifyProvider() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val today = LocalDate.now().toString() // yyyy-MM-dd — same convention as the rest of the app
+        val today = LocalDate.now() // the app's own convention: local calendar day, yyyy-MM-dd
         val testMillis = 5_400_000L // 1h30m: a plausible value, comfortably under any sane daily limit
+        // Seeded as measured just now, the way a real sync of the running day stamps it — a stale
+        // stamp is exactly what a reader is supposed to refuse to act on, so it would make the
+        // cross-app check pass for the wrong reason.
+        val measuredThroughMs = System.currentTimeMillis()
 
         runBlocking {
-            ScreenTimeDatabase.get(context).deviceUsageDao()
-                .insertAll(listOf(DeviceUsageEntity(date = today, screenMillis = testMillis)))
+            ScreenTimeDatabase.get(context).deviceUsageDao().insertAll(
+                listOf(
+                    DeviceUsageEntity(
+                        date = today.toString(),
+                        screenMillis = testMillis,
+                        updatedAtMs = measuredThroughMs,
+                    ),
+                ),
+            )
         }
 
         val resolver: ContentResolver = context.contentResolver
-        val uri = Uri.parse("content://com.creker.screentime.provider/device_usage")
-        val cursor = resolver.query(uri, null, null, arrayOf(today, today), null)
+        val uri = Uri.parse(UsageContract.CONTENT_URI_STRING)
+        val cursor = resolver.query(uri, null, null, arrayOf(today.toString(), today.toString()), null)
             ?: throw AssertionError("UsageProvider returned a null cursor for $uri")
         cursor.use {
             assertTrue("expected at least one row for $today", it.moveToFirst())
-            val millisIdx = it.getColumnIndexOrThrow("screen_millis")
-            assertEquals(testMillis, it.getLong(millisIdx))
+            assertEquals(
+                testMillis,
+                it.getLong(it.getColumnIndexOrThrow(UsageContract.COLUMN_SCREEN_MILLIS)),
+            )
+            assertEquals(
+                today.toString(),
+                it.getString(it.getColumnIndexOrThrow(UsageContract.COLUMN_DATE)),
+            )
+            assertEquals(
+                measuredThroughMs,
+                it.getLong(it.getColumnIndexOrThrow(UsageContract.COLUMN_UPDATED_AT)),
+            )
         }
     }
 }

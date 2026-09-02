@@ -30,6 +30,16 @@
         android:name="com.creker.screentime.permission.READ_USAGE"
         android:protectionLevel="normal" />
 
+    <!--
+        Guards the write half of the provider. protectionLevel="signature" means only an app
+        signed with the same key could ever hold it, i.e. nobody — this is a lock rather than an
+        entry point. UsageProvider refuses insert/update/delete in code as well: this attribute
+        can be lost in a manifest merge, the code check cannot.
+    -->
+    <permission
+        android:name="com.creker.screentime.permission.WRITE_USAGE"
+        android:protectionLevel="signature" />
+
     <application
         android:name=".ScreenTimeApplication"
         android:allowBackup="false"
@@ -54,7 +64,8 @@
             android:name=".data.provider.UsageProvider"
             android:authorities="com.creker.screentime.provider"
             android:exported="true"
-            android:readPermission="com.creker.screentime.permission.READ_USAGE" />
+            android:readPermission="com.creker.screentime.permission.READ_USAGE"
+            android:writePermission="com.creker.screentime.permission.WRITE_USAGE" />
     </application>
 
 </manifest>

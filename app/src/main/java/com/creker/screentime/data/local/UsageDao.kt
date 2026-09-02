@@ -6,10 +6,11 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.creker.screentime.contract.UsageContract
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-abstract class UsageDao {
+internal abstract class UsageDao {
 
     @Query(
         """
@@ -110,7 +111,7 @@ abstract class UsageDao {
 }
 
 @Dao
-interface SyncStateDao {
+internal interface SyncStateDao {
 
     @Query("SELECT * FROM sync_state WHERE id = 0")
     suspend fun get(): SyncStateEntity?
@@ -120,7 +121,7 @@ interface SyncStateDao {
 }
 
 @Dao
-abstract class DeviceUsageDao {
+internal abstract class DeviceUsageDao {
 
     /** Per-day device-wide screen-on time, for the multi-day chart in screen-time mode. */
     @Query("SELECT date, screen_millis AS usage_millis FROM device_usage WHERE date BETWEEN :fromDate AND :toDate")
@@ -131,8 +132,20 @@ abstract class DeviceUsageDao {
      * `ContentProvider.query()` is a synchronous callback, not a suspend function, and Room
      * hands back a raw [Cursor] for exactly this case instead of running the query through
      * coroutines.
+     *
+     * This is the query another app sees, so it is spelled out of [UsageContract] constants
+     * rather than string literals: the cursor's column names cannot drift from the contract
+     * without someone editing the contract file itself. Kotlin folds the concatenation at
+     * compile time, which is what Room's annotation needs.
      */
-    @Query("SELECT date, screen_millis FROM device_usage WHERE date BETWEEN :fromDate AND :toDate ORDER BY date ASC")
+    @Query(
+        "SELECT " + UsageContract.COLUMN_DATE +
+            ", " + UsageContract.COLUMN_SCREEN_MILLIS +
+            ", " + UsageContract.COLUMN_UPDATED_AT +
+            " FROM " + UsageContract.TABLE_DEVICE_USAGE +
+            " WHERE " + UsageContract.COLUMN_DATE + " BETWEEN :fromDate AND :toDate" +
+            " ORDER BY " + UsageContract.COLUMN_DATE + " ASC"
+    )
     abstract fun queryDailyTotalsCursor(fromDate: String, toDate: String): Cursor
 
     /** Every stored row, for the "save all data" export. */
