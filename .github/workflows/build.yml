@@ -26,6 +26,13 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
+      # Compiles the instrumentation APK without running it. SeedTestDataTest is what
+      # verifies the provider contract on a device, and nothing else here builds it --
+      # a break in it would otherwise surface only in the cross-app E2E, one repository
+      # and several steps away.
+      - name: Compile instrumented tests
+        run: ./gradlew assembleDebugAndroidTest
+
       - name: Render screenshots
         run: ./gradlew recordPaparazziDebug
 
