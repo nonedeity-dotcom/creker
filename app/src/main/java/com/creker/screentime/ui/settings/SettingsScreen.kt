@@ -171,13 +171,17 @@ private fun CallerRow(caller: CallerUi, onAllowedChange: (Boolean) -> Unit) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = caller.packageName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // An app that can no longer be resolved has the package name as its label,
+                // and printing the same string twice reads like a rendering bug.
+                if (caller.label != caller.packageName) {
+                    Text(
+                        text = caller.packageName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
                     text = when {
                         !caller.isInstalled -> stringResource(R.string.settings_caller_not_installed)
