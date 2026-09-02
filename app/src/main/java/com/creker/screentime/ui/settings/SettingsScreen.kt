@@ -164,15 +164,18 @@ private fun BackupSection(onExport: () -> Unit, onImport: () -> Unit) {
     SettingsCard(title = stringResource(R.string.settings_backup_section)) {
         Body(stringResource(R.string.settings_backup_body))
         Spacer(modifier = Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) {
+        // Stacked rather than side by side: at half the card's width the Russian labels
+        // wrapped onto two lines inside the buttons ("Сохранить / данные"), which the
+        // screenshot test caught.
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
                 Icon(imageVector = Icons.Rounded.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.export_action))
             }
-            OutlinedButton(onClick = onImport, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
                 Icon(imageVector = Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.import_action))
             }
         }
