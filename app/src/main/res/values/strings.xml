@@ -92,9 +92,11 @@
     <string name="settings_access_denied_body">Без этого доступа система не отдаёт статистику: новые дни не появятся, а уже сохранённые останутся.</string>
     <string name="settings_access_action">Открыть системные настройки</string>
     <string name="settings_sharing_section">Данные другим приложениям</string>
-    <string name="settings_sharing_switch">Отдавать данные другим приложениям</string>
-    <string name="settings_sharing_on_body">Приложение на этом же телефоне может спросить, сколько было экранного времени за день, если у него есть разрешение creker. Данные не покидают телефон — в интернет не уходит ничего.</string>
-    <string name="settings_sharing_off_body">Запросы других приложений остаются без ответа — для них это выглядит так, будто creker не установлен. No Burnout перестанет сам отмечать «Экранное время в норме», отмечать придётся вручную.</string>
+    <string name="settings_sharing_body">Данные получают только приложения с включённым переключателем. Остальным creker не отвечает — для них это выглядит так, будто он не установлен. Ничего не уходит в интернет: обмен идёт внутри телефона.</string>
+    <string name="settings_caller_never">Ещё не запрашивал</string>
+    <string name="settings_caller_last_seen">Последний запрос: %1$s</string>
+    <string name="settings_caller_not_installed">Не установлено на этом телефоне</string>
+    <string name="settings_caller_noburnout_off">No Burnout перестанет сам отмечать «Экранное время в норме» — отмечать придётся вручную.</string>
     <string name="settings_backup_section">Резервная копия</string>
     <string name="settings_backup_body">Вся история пишется в CSV-файл туда, куда укажешь, и читается обратно оттуда же. Пригодится при переезде на другой телефон.</string>
 </resources>

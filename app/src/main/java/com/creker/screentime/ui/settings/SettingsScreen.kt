@@ -24,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -31,13 +32,20 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
+import com.creker.screentime.data.settings.CallerAccess
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /** The same muted green the total-time screen uses for "this is the good state". */
 private val GrantedGreen = Color(0xFF5FB86A)
@@ -57,10 +65,10 @@ private val GrantedGreen = Color(0xFF5FB86A)
 @Composable
 fun SettingsScreen(
     hasUsageAccess: Boolean,
-    sharingEnabled: Boolean,
+    callers: List<CallerUi>,
     onBack: () -> Unit,
     onOpenUsageAccessSettings: () -> Unit,
-    onSharingChange: (Boolean) -> Unit,
+    onCallerAllowedChange: (String, Boolean) -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     modifier: Modifier = Modifier,
@@ -93,7 +101,7 @@ fun SettingsScreen(
                 hasUsageAccess = hasUsageAccess,
                 onOpenUsageAccessSettings = onOpenUsageAccessSettings,
             )
-            SharingSection(sharingEnabled = sharingEnabled, onSharingChange = onSharingChange)
+            SharingSection(callers = callers, onCallerAllowedChange = onCallerAllowedChange)
             BackupSection(onExport = onExport, onImport = onImport)
         }
     }
@@ -135,29 +143,76 @@ private fun UsageAccessSection(hasUsageAccess: Boolean, onOpenUsageAccessSetting
 }
 
 @Composable
-private fun SharingSection(sharingEnabled: Boolean, onSharingChange: (Boolean) -> Unit) {
+private fun SharingSection(callers: List<CallerUi>, onCallerAllowedChange: (String, Boolean) -> Unit) {
     SettingsCard(title = stringResource(R.string.settings_sharing_section)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.settings_sharing_switch),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Switch(checked = sharingEnabled, onCheckedChange = onSharingChange)
+        Body(stringResource(R.string.settings_sharing_body))
+        Spacer(modifier = Modifier.height(4.dp))
+        callers.forEachIndexed { index, caller ->
+            if (index > 0) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                )
+            }
+            CallerRow(caller = caller, onAllowedChange = { onCallerAllowedChange(caller.packageName, it) })
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        // The consequence of the current position, not a generic description: switching
-        // this off silently stops another app from working, so the screen says which app
-        // and what stops.
-        Body(
-            stringResource(
-                if (sharingEnabled) R.string.settings_sharing_on_body else R.string.settings_sharing_off_body,
-            ),
-        )
     }
 }
+
+@Composable
+private fun CallerRow(caller: CallerUi, onAllowedChange: (Boolean) -> Unit) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = caller.label,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = caller.packageName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = when {
+                        !caller.isInstalled -> stringResource(R.string.settings_caller_not_installed)
+                        caller.lastSeenMs <= 0L -> stringResource(R.string.settings_caller_never)
+                        else -> stringResource(R.string.settings_caller_last_seen, formatLastSeen(caller.lastSeenMs))
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Switch(checked = caller.allowed, onCheckedChange = onAllowedChange)
+        }
+        // Turning the companion off silently stops it working, so this one consequence is
+        // spelled out where it happens rather than left to be discovered in the other app.
+        if (caller.packageName == CallerAccess.NO_BURNOUT_PACKAGE && !caller.allowed) {
+            Text(
+                text = stringResource(R.string.settings_caller_noburnout_off),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+/** Date and time of the last query, in whatever short form the phone's locale uses. */
+@Composable
+private fun formatLastSeen(epochMillis: Long): String =
+    remember(epochMillis) {
+        LAST_SEEN_FORMATTER.format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
+    }
+
+private val LAST_SEEN_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT)
 
 @Composable
 private fun BackupSection(onExport: () -> Unit, onImport: () -> Unit) {

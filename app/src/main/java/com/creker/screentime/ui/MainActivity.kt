@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,11 +31,12 @@ import com.creker.screentime.R
 import com.creker.screentime.ScreenTimeApplication
 import com.creker.screentime.core.UsageCsvReader
 import com.creker.screentime.core.UsageCsvWriter
-import com.creker.screentime.data.settings.SharingSettings
+import com.creker.screentime.data.settings.CallerAccess
 import com.creker.screentime.data.system.UsageAccess
 import com.creker.screentime.ui.appdetail.AppDetailScreen
 import com.creker.screentime.ui.appdetail.AppDetailViewModel
 import com.creker.screentime.ui.permission.PermissionScreen
+import com.creker.screentime.ui.settings.CallerUi
 import com.creker.screentime.ui.settings.SettingsScreen
 import com.creker.screentime.ui.stats.StatsScreen
 import com.creker.screentime.ui.stats.StatsViewModel
@@ -79,7 +81,30 @@ private fun ScreenTimeApp(container: AppContainer) {
     var selectedPackage by remember { mutableStateOf<String?>(null) }
     var totalTimeOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
-    var sharingEnabled by remember { mutableStateOf(SharingSettings.isEnabled(context)) }
+    var callers by remember { mutableStateOf(emptyList<CallerUi>()) }
+
+    // Resolving a package to its name and install state touches PackageManager, so it happens
+    // off the main thread. Reloaded whenever settings open — a cross-app query can arrive while
+    // creker sits in the background, and the list would otherwise be a snapshot from launch.
+    suspend fun reloadCallers() {
+        val loaded = withContext(Dispatchers.IO) {
+            CallerAccess.records(context).map { record ->
+                val info = container.appInfoProvider.get(record.packageName)
+                CallerUi(
+                    packageName = record.packageName,
+                    label = info.label,
+                    isInstalled = info.isInstalled,
+                    allowed = record.allowed,
+                    lastSeenMs = record.lastSeenMs,
+                )
+            }
+        }
+        callers = loaded
+    }
+
+    LaunchedEffect(settingsOpen) {
+        if (settingsOpen) reloadCallers()
+    }
 
     // The permission is granted on a system screen, so the only reliable moment to
     // re-check it is when this activity comes back to the foreground.
@@ -148,7 +173,7 @@ private fun ScreenTimeApp(container: AppContainer) {
             // returns from the system screen below — so the status here updates itself
             // without this screen having to poll anything.
             hasUsageAccess = hasAccess,
-            sharingEnabled = sharingEnabled,
+            callers = callers,
             onBack = { settingsOpen = false },
             onOpenUsageAccessSettings = {
                 // Unlike the permission screen, this one has nowhere to park a persistent
@@ -158,9 +183,11 @@ private fun ScreenTimeApp(container: AppContainer) {
                     Toast.makeText(context, R.string.permission_settings_missing, Toast.LENGTH_LONG).show()
                 }
             },
-            onSharingChange = { enabled ->
-                SharingSettings.setEnabled(context, enabled)
-                sharingEnabled = enabled
+            onCallerAllowedChange = { packageName, allowed ->
+                CallerAccess.setAllowed(context, packageName, allowed)
+                // Reflected locally rather than re-read: the write is async and the switch
+                // has to move under the finger now.
+                callers = callers.map { if (it.packageName == packageName) it.copy(allowed = allowed) else it }
             },
             onExport = { exportLauncher.launch("screen_time_${LocalDate.now().format(EXPORT_FILE_DATE_FORMATTER)}.csv") },
             onImport = { importLauncher.launch("*/*") },
