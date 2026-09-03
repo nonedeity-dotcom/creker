@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/android-screen-time-tracker-4pmx1k
+      - claude/creker-architecture-audit-5ismtl
   workflow_dispatch:
 
 jobs:
@@ -25,6 +26,13 @@ jobs:
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
+
+      # Compiles the instrumentation APK without running it. SeedTestDataTest is what
+      # verifies the provider contract on a device, and nothing else here builds it --
+      # a break in it would otherwise surface only in the cross-app E2E, one repository
+      # and several steps away.
+      - name: Compile instrumented tests
+        run: ./gradlew assembleDebugAndroidTest
 
       - name: Render screenshots
         run: ./gradlew recordPaparazziDebug
@@ -65,3 +73,14 @@ jobs:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # The artifact above is a zip behind a GitHub login, which is awkward to
+      # install from a phone. A release carries the .apk itself, so the download
+      # is one tap -- same arrangement the sibling app (no-burnout) already uses.
+      - name: Publish release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: creker-build-${{ github.run_number }}
+          name: Creker APK build ${{ github.run_number }}
+          body: Automated debug APK built from ${{ github.sha }}.
+          files: app/build/outputs/apk/debug/app-debug.apk

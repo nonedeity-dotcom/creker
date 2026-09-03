@@ -2,12 +2,15 @@ package com.creker.screentime.ui.permission
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.QueryStats
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,12 +27,17 @@ import com.creker.screentime.R
 /**
  * Shown until the user grants "Usage access" — without it the system reports no data
  * at all, so there is nothing else to display.
+ *
+ * Settings are still reachable from here, and deliberately so: restoring a CSV backup onto
+ * a fresh install is exactly the moment when there is no usage access yet, and that is also
+ * the only place the "no access" state of the settings screen can be seen at all.
  */
 @Composable
 fun PermissionScreen(
     onOpenSettings: () -> Unit,
     onRecheck: () -> Unit,
     settingsUnavailable: Boolean,
+    onOpenAppSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -71,6 +79,18 @@ fun PermissionScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(stringResource(R.string.permission_recheck))
+        }
+        TextButton(
+            onClick = onOpenAppSettings,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Settings,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(stringResource(R.string.settings_title))
         }
         if (settingsUnavailable) {
             Text(

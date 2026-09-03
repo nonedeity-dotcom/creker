@@ -3,6 +3,7 @@ package com.creker.screentime.data
 import com.creker.screentime.core.AppPeriodTotal
 import com.creker.screentime.core.AppUsageTotal
 import com.creker.screentime.core.DailyTotal
+import com.creker.screentime.core.DayCompleteness
 import com.creker.screentime.core.DayRange
 import com.creker.screentime.core.ForegroundSessionBuilder
 import com.creker.screentime.core.HourlyUsage
@@ -32,7 +33,7 @@ import java.util.concurrent.TimeUnit
  * working; writing happens by re-deriving whole days from [SystemUsageEventSource],
  * which makes repeated syncs of the same window idempotent.
  */
-class UsageRepository(
+class UsageRepository internal constructor(
     private val usageDao: UsageDao,
     private val deviceUsageDao: DeviceUsageDao,
     private val syncStateDao: SyncStateDao,
@@ -158,8 +159,17 @@ class UsageRepository(
         val appEntities = rows.filter { it.kind == "app" }.map {
             AppUsageEntity(packageName = it.packageName, date = it.date, usageMillis = it.valueMillis, launchCount = it.launchCount)
         }
+        val nowMs = clock.millis()
         val deviceEntities = rows.filter { it.kind == "screen" }.map {
-            DeviceUsageEntity(date = it.date, screenMillis = it.valueMillis)
+            DeviceUsageEntity(
+                date = it.date,
+                screenMillis = it.valueMillis,
+                // A day that had already ended when the file was written is complete, whichever
+                // device measured it. Today's row is a different matter: the export could be
+                // hours old and nothing in the CSV says when it was taken, so it stays "unknown"
+                // rather than claiming a freshness this device cannot vouch for.
+                updatedAtMs = importedThroughMs(it.date, nowMs),
+            )
         }
         val appIds = if (appEntities.isNotEmpty()) usageDao.importAll(appEntities) else emptyList()
         val deviceIds = if (deviceEntities.isNotEmpty()) deviceUsageDao.importAll(deviceEntities) else emptyList()
@@ -225,7 +235,13 @@ class UsageRepository(
             nowMs = nowMs,
         )
         val screenRows = ForegroundSessionBuilder.toDailyUsage(screenOnIntervals, zone)
-            .map { usage -> DeviceUsageEntity(date = usage.day.toString(), screenMillis = usage.usageMillis) }
+            .map { usage ->
+                DeviceUsageEntity(
+                    date = usage.day.toString(),
+                    screenMillis = usage.usageMillis,
+                    updatedAtMs = DayCompleteness.measuredThroughMs(usage.day, zone, nowMs),
+                )
+            }
         deviceUsageDao.replaceDays(firstDay.toString(), today.toString(), screenRows)
         deviceUsageDao.deleteBefore(today.minusDays(HISTORY_RETENTION_DAYS).toString())
 
@@ -245,6 +261,16 @@ class UsageRepository(
         val daysWritten: Int,
         val eventCount: Int,
     )
+
+    /**
+     * [DayCompleteness.importedThroughMs] for a date string off a CSV row. The reader has already
+     * dropped anything unparseable, so a bad date here can only mean the row was hand-edited —
+     * treat it as a day of unknown completeness rather than dropping the usage it carries.
+     */
+    private fun importedThroughMs(date: String, nowMs: Long): Long {
+        val day = runCatching { LocalDate.parse(date) }.getOrNull() ?: return DayCompleteness.UNKNOWN_MS
+        return DayCompleteness.importedThroughMs(day, clock.zone, nowMs)
+    }
 
     /** [zone], the start of [day] in it, and the end — clamped to now if `day` is today. */
     private fun dayWindow(day: LocalDate): Triple<java.time.ZoneId, Long, Long> {

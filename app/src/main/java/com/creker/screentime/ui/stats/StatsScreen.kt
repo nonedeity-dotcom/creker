@@ -10,9 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FileDownload
-import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -53,8 +52,7 @@ fun StatsScreen(
     onRefresh: () -> Unit,
     onAppClick: (String) -> Unit,
     onSelectMetric: (ChartMetric) -> Unit,
-    onExport: () -> Unit,
-    onImport: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenTotalTime: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -65,23 +63,20 @@ fun StatsScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
+                // Only the two actions that belong next to a screen you look at daily.
+                // Import and export moved into settings behind the gear: they are used
+                // once in a blue moon, and three icons left the title cramped.
                 actions = {
-                    IconButton(onClick = onImport) {
-                        Icon(
-                            imageVector = Icons.Rounded.FileUpload,
-                            contentDescription = stringResource(R.string.import_action),
-                        )
-                    }
-                    IconButton(onClick = onExport) {
-                        Icon(
-                            imageVector = Icons.Rounded.FileDownload,
-                            contentDescription = stringResource(R.string.export_action),
-                        )
-                    }
                     IconButton(onClick = onRefresh, enabled = !state.isRefreshing) {
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
                             contentDescription = stringResource(R.string.refresh),
+                        )
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = stringResource(R.string.settings_open),
                         )
                     }
                 },

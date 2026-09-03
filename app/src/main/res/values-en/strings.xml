@@ -70,4 +70,22 @@
     <string name="ring_chart_other">Other</string>
     <string name="usage_analysis_section">Usage analysis</string>
     <string name="time_saved_label">Time saved</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_open">Settings</string>
+    <string name="settings_access_section">Usage access</string>
+    <string name="settings_access_granted">Access granted</string>
+    <string name="settings_access_denied">No access</string>
+    <string name="settings_access_granted_body">Android is handing over usage statistics, so screen time is being counted.</string>
+    <string name="settings_access_denied_body">Without this access the system reports nothing: no new days will appear, though days already stored stay.</string>
+    <string name="settings_access_action">Open system settings</string>
+    <string name="settings_sharing_section">Data for other apps</string>
+    <string name="settings_sharing_body">Only apps with the switch on get the data. Everyone else gets no answer — to them it looks as if creker were not installed. Nothing goes to the internet: this exchange stays inside the phone.</string>
+    <string name="settings_caller_never">Has never asked</string>
+    <string name="settings_caller_last_seen">Last request: %1$s</string>
+    <string name="settings_caller_not_installed">Not installed on this phone</string>
+    <string name="settings_caller_noburnout_off">Sterzhen will stop ticking “screen time is fine” on its own; you will have to tick it yourself.</string>
+    <string name="settings_backup_section">Backup</string>
+    <string name="settings_backup_body">The whole history is written to a CSV file wherever you choose, and read back from there. Useful when moving to another phone.</string>
 </resources>
