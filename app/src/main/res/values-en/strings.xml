@@ -85,7 +85,7 @@
     <string name="settings_caller_never">Has never asked</string>
     <string name="settings_caller_last_seen">Last request: %1$s</string>
     <string name="settings_caller_not_installed">Not installed on this phone</string>
-    <string name="settings_caller_noburnout_off">No Burnout will stop ticking “screen time is fine” on its own; you will have to tick it yourself.</string>
+    <string name="settings_caller_noburnout_off">Sterzhen will stop ticking “screen time is fine” on its own; you will have to tick it yourself.</string>
     <string name="settings_backup_section">Backup</string>
     <string name="settings_backup_body">The whole history is written to a CSV file wherever you choose, and read back from there. Useful when moving to another phone.</string>
 </resources>

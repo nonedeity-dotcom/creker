@@ -96,7 +96,7 @@
     <string name="settings_caller_never">Ещё не запрашивал</string>
     <string name="settings_caller_last_seen">Последний запрос: %1$s</string>
     <string name="settings_caller_not_installed">Не установлено на этом телефоне</string>
-    <string name="settings_caller_noburnout_off">No Burnout перестанет сам отмечать «Экранное время в норме» — отмечать придётся вручную.</string>
+    <string name="settings_caller_noburnout_off">«Стержень» перестанет сам отмечать «Экранное время в норме» — отмечать придётся вручную.</string>
     <string name="settings_backup_section">Резервная копия</string>
     <string name="settings_backup_body">Вся история пишется в CSV-файл туда, куда укажешь, и читается обратно оттуда же. Пригодится при переезде на другой телефон.</string>
 </resources>
