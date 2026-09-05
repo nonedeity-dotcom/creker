@@ -31,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,8 +39,6 @@ import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DurationFormatter
 import com.creker.screentime.ui.theme.MonoNumeric
 
-/** A muted, theme-independent green — the one color in this palette that always reads as "good". */
-private val ImprovedGreen = Color(0xFF5FB86A)
 
 /** Keeps the card the same height whether or not the period has any data to plot. */
 private val EMPTY_CHART_HEIGHT = 96.dp
@@ -197,14 +194,21 @@ fun ChartCard(
     }
 }
 
+/**
+ * "18% less than yesterday", as a fact rather than a grade.
+ *
+ * It used to be green when the number fell and error-red when it rose — the last place in
+ * the app still handing out verdicts after the "time saved" card and the coloured arrows in
+ * the app list went. The arrow still says which way; nothing says whether that is good.
+ */
 @Composable
 private fun UsageChangeChip(percent: Int, isDecrease: Boolean, comparedToYesterday: Boolean) {
-    val tint = if (isDecrease) ImprovedGreen else MaterialTheme.colorScheme.error
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(tint.copy(alpha = 0.16f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Icon(
