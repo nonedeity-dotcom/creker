@@ -5,11 +5,25 @@ name: Migration check (emulator)
 # repository installs it fresh too, so a migration that quietly destroyed 400 days of
 # history would pass every check the project had.
 #
-# Manual: booting an emulator takes several minutes, which is too slow to put on every
-# push. Run it whenever the database schema changes.
+# Booting an emulator takes several minutes, which is too slow for every push — so it
+# arms itself instead: it runs when something under the database, the contract it exposes,
+# or this workflow changes, and stays out of the way otherwise. Waiting for someone to
+# remember to press a button is how a check like this rots.
+#
+# (workflow_dispatch is here too, but GitHub only offers the button for workflows present
+# on the default branch.)
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - claude/android-screen-time-tracker-4pmx1k
+      - claude/creker-architecture-audit-5ismtl
+    paths:
+      - 'app/src/main/java/com/creker/screentime/data/local/**'
+      - 'app/src/androidTest/java/com/creker/screentime/data/local/**'
+      - 'app/src/main/java/com/creker/screentime/contract/**'
+      - '.github/workflows/migration-check.yml'
 
 jobs:
   migration:
