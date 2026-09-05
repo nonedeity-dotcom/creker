@@ -262,6 +262,26 @@ private fun UsageRow(
     }
 }
 
+/** The app's own icon, on a rounded square so a transparent one still has an edge. */
+@Composable
+private fun AppIconBadge(app: TotalTimeAppUi) {
+    val icon = app.icon
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
+        if (icon != null) {
+            Image(
+                bitmap = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)),
+            )
+        }
+    }
+}
+
 @Composable
 private fun UsageChangeRow(usageMillis: Long, change: UsageComparison?) {
     val units = rememberDurationUnits()
