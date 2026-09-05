@@ -120,6 +120,7 @@ fun ChartCard(
                     mode = mode,
                     // Bars get the short form: "01:34:36" over a bar is unreadable.
                     formatBarLabel = { metric.formatCompact(it, units) },
+                    formatAxisTick = { value, max -> metric.formatAxisTick(value, max, units) },
                     formatTooltip = metric::formatValue,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)),
                 )

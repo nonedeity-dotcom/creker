@@ -25,16 +25,25 @@ data class ChartPoint(
 private val MONTH_DAY_FORMATTER = DateTimeFormatter.ofPattern("d MMM", Locale("ru"))
 private val FULL_DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru"))
 
-/** Maps hourly buckets (always exactly 24, hour 0..23) onto chart points. */
-fun List<HourlyUsage>.toHourlyChartPoints(): List<ChartPoint> =
-    map {
-        val nextHour = (it.hour + 1) % 24
-        ChartPoint(
-            label = it.hour.toString(),
-            detailLabel = "%02d:00–%02d:00".format(it.hour, nextHour),
-            value = it.value,
-        )
-    }
+/**
+ * Maps hourly buckets (always exactly 24, hour 0..23) onto chart points.
+ *
+ * [throughHour], when given, cuts the axis there. For today that is the hour it is now:
+ * a day chart drawn to midnight is mostly a picture of hours that have not happened, and
+ * at nine in the morning that is five sixths of the chart. Empty space to the right of the
+ * last bar reads as "nothing was used then", which is a different claim from "then hasn't
+ * arrived". A finished day passes null and keeps the whole axis.
+ */
+fun List<HourlyUsage>.toHourlyChartPoints(throughHour: Int? = null): List<ChartPoint> =
+    filter { throughHour == null || it.hour <= throughHour }
+        .map {
+            val nextHour = (it.hour + 1) % 24
+            ChartPoint(
+                label = it.hour.toString(),
+                detailLabel = "%02d:00–%02d:00".format(it.hour, nextHour),
+                value = it.value,
+            )
+        }
 
 /**
  * Maps daily totals onto chart points. [useWeekdayLabels] picks short weekday names
@@ -64,6 +73,12 @@ fun ChartMetric.formatValue(value: Long): String = when (this) {
  */
 fun ChartMetric.formatCompact(value: Long, units: DurationUnits): String = when (this) {
     ChartMetric.USAGE, ChartMetric.SCREEN_TIME -> DurationFormatter.formatCompact(value, units)
+    ChartMetric.SESSIONS -> value.toString()
+}
+
+/** One tick of the Y axis, in a single unit chosen from the axis maximum. */
+fun ChartMetric.formatAxisTick(value: Long, maxValue: Long, units: DurationUnits): String = when (this) {
+    ChartMetric.USAGE, ChartMetric.SCREEN_TIME -> DurationFormatter.formatAxisTick(value, maxValue, units)
     ChartMetric.SESSIONS -> value.toString()
 }
 

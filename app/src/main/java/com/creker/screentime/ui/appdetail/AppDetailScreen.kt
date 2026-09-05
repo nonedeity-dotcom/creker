@@ -18,15 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.FileDownload
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.TouchApp
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -43,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -167,13 +159,11 @@ private fun StatGrid(state: AppDetailUiState) {
     ) {
         StatRow {
             StatTile(
-                icon = Icons.Rounded.AccessTime,
                 label = stringResource(R.string.app_detail_usage_label),
                 value = DurationFormatter.format(state.usageMillis),
                 modifier = Modifier.weight(1f),
             )
             StatTile(
-                icon = Icons.Rounded.TouchApp,
                 label = stringResource(R.string.app_detail_sessions_label),
                 value = state.launchCount.toString(),
                 accent = true,
@@ -182,13 +172,11 @@ private fun StatGrid(state: AppDetailUiState) {
         }
         StatRow {
             StatTile(
-                icon = Icons.Rounded.CalendarMonth,
                 label = stringResource(R.string.app_detail_average_label),
                 value = DurationFormatter.format(state.averagePerDayMillis),
                 modifier = Modifier.weight(1f),
             )
             StatTile(
-                icon = Icons.Rounded.LocalFireDepartment,
                 label = stringResource(R.string.app_detail_current_streak_label),
                 value = stringResource(R.string.app_detail_days_format, state.currentStreakDays),
                 modifier = Modifier.weight(1f),
@@ -196,13 +184,11 @@ private fun StatGrid(state: AppDetailUiState) {
         }
         StatRow {
             StatTile(
-                icon = Icons.Rounded.EmojiEvents,
                 label = stringResource(R.string.app_detail_longest_streak_label),
                 value = stringResource(R.string.app_detail_days_format, state.longestStreakDays),
                 modifier = Modifier.weight(1f),
             )
             StatTile(
-                icon = Icons.Rounded.TrendingUp,
                 label = stringResource(R.string.app_detail_max_day_label),
                 value = DurationFormatter.format(state.maxDayMillis),
                 modifier = Modifier.weight(1f),
@@ -210,7 +196,6 @@ private fun StatGrid(state: AppDetailUiState) {
         }
         StatRow {
             StatTile(
-                icon = Icons.Rounded.FileDownload,
                 label = stringResource(R.string.app_detail_install_date_label),
                 value = formatInstallDate(state.installedAtMs),
                 modifier = Modifier.weight(1f),
@@ -229,9 +214,17 @@ private fun StatRow(content: @Composable RowScope.() -> Unit) {
     )
 }
 
+/**
+ * One number with its name.
+ *
+ * There used to be a tinted icon in a rounded box next to each label — a clock, a hand, a
+ * calendar, a flame, a trophy. Six of them on one screen, and not one disambiguated
+ * anything: every tile is already named in words. They were decoration that made the
+ * screen busier than the numbers on it. The trophy went for a second reason — the project
+ * says outright that it shows streaks as fact, without badges or awards.
+ */
 @Composable
 private fun StatTile(
-    icon: ImageVector,
     label: String,
     value: String,
     modifier: Modifier = Modifier,
@@ -243,37 +236,21 @@ private fun StatTile(
         // within each row still left row-to-row differences, so tiles didn't read as
         // one even grid.
         modifier = modifier
-            .heightIn(min = 92.dp)
+            .heightIn(min = 76.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                    .padding(8.dp),
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            // Single line, not wrapped: a wrapped label was the other half of why
-            // tiles came out uneven, on top of just looking crowded in a narrow tile.
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        // Single line, not wrapped: a wrapped label was the other half of why tiles came
+        // out uneven, on top of just looking crowded in a narrow tile.
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall,

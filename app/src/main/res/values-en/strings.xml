@@ -68,8 +68,11 @@
     <string name="total_time_title">Total time</string>
     <string name="ring_chart_title">App usage breakdown</string>
     <string name="ring_chart_other">Other</string>
-    <string name="usage_analysis_section">Usage analysis</string>
-    <string name="time_saved_label">Time saved</string>
+    <string name="usage_analysis_section">By app</string>
+    <string name="total_change_less">%1$s less than the previous period</string>
+    <string name="total_change_more">%1$s more than the previous period</string>
+    <string name="total_change_less_yesterday">%1$s less than yesterday</string>
+    <string name="total_change_more_yesterday">%1$s more than yesterday</string>
 
     <!-- Settings screen -->
     <string name="settings_title">Settings</string>

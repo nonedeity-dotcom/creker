@@ -44,6 +44,24 @@ object DurationFormatter {
         }
     }
 
+    /**
+     * One tick of an axis, in the unit the top of that axis calls for.
+     *
+     * [formatCompact] picks a unit per value, which is right over a bar and wrong down the
+     * side of a chart: an axis topping out at half an hour came out labelled `30м / 15м /
+     * 0с`, three ticks in two units. The unit is chosen once, from [axisMaxMs], and every
+     * tick is rendered in it.
+     */
+    fun formatAxisTick(valueMs: Long, axisMaxMs: Long, units: DurationUnits): String {
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(valueMs.coerceAtLeast(0L))
+        val maxSeconds = TimeUnit.MILLISECONDS.toSeconds(axisMaxMs.coerceAtLeast(0L))
+        return when {
+            maxSeconds >= 3600 -> "${seconds / 3600}${units.hours}"
+            maxSeconds >= 60 -> "${seconds / 60}${units.minutes}"
+            else -> "$seconds${units.seconds}"
+        }
+    }
+
     private fun split(durationMs: Long): Triple<Long, Long, Long> {
         val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(durationMs.coerceAtLeast(0L))
         return Triple(totalSeconds / 3600, (totalSeconds % 3600) / 60, totalSeconds % 60)

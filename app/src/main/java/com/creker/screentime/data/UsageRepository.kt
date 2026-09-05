@@ -24,6 +24,7 @@ import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
 /**
@@ -43,6 +44,9 @@ class UsageRepository internal constructor(
 ) {
 
     fun today(): LocalDate = LocalDate.now(clock)
+
+    /** The hour it is now, 0..23 — the far end of today's chart. */
+    fun nowHour(): Int = LocalTime.now(clock).hour
 
     fun observeTotals(range: DayRange): Flow<List<AppUsageTotal>> =
         usageDao.observeTotals(range.from.toString(), range.to.toString())

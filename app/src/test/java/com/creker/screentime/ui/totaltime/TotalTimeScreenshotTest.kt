@@ -61,7 +61,9 @@ class TotalTimeScreenshotTest {
         canGoForward = false,
         totalMillis = apps.sumOf { it.usageMillis },
         apps = apps,
-        savedMillis = minutes(22) + 38_000L,
+        // Negative: this period came in under the previous one. Signed now, and rendered
+        // either way — the old savedMillis only existed when the number fell.
+        totalChangeMillis = -(minutes(22) + 38_000L),
         isInitialLoading = false,
     )
 

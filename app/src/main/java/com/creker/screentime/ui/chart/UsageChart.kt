@@ -197,6 +197,8 @@ fun UsageChart(
     points: List<ChartPoint>,
     mode: ChartMode,
     formatBarLabel: (Long) -> String,
+    /** One Y-axis tick, given the value and the axis maximum — see DurationFormatter. */
+    formatAxisTick: (Long, Long) -> String,
     formatTooltip: (Long) -> String,
     modifier: Modifier = Modifier,
 ) {
@@ -234,7 +236,7 @@ fun UsageChart(
     Row(modifier = modifier.fillMaxWidth()) {
         ChartYAxisLabels(
             maxValue = maxValue,
-            formatValue = formatBarLabel,
+            formatTick = formatAxisTick,
             style = axisStyle,
         )
         BoxWithConstraints(
@@ -345,7 +347,7 @@ fun UsageChart(
  * these line up with its gridlines.
  */
 @Composable
-private fun ChartYAxisLabels(maxValue: Long, formatValue: (Long) -> String, style: TextStyle) {
+private fun ChartYAxisLabels(maxValue: Long, formatTick: (Long, Long) -> String, style: TextStyle) {
     Column(
         modifier = Modifier
             .width(Y_AXIS_WIDTH)
@@ -354,9 +356,9 @@ private fun ChartYAxisLabels(maxValue: Long, formatValue: (Long) -> String, styl
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.End,
     ) {
-        Text(text = formatValue(maxValue), style = style)
-        Text(text = formatValue(maxValue / 2), style = style)
-        Text(text = formatValue(0L), style = style)
+        Text(text = formatTick(maxValue, maxValue), style = style)
+        Text(text = formatTick(maxValue / 2, maxValue), style = style)
+        Text(text = formatTick(0L, maxValue), style = style)
     }
 }
 

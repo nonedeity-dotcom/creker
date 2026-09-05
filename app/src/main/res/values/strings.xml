@@ -79,8 +79,15 @@
     <string name="total_time_title">Общее время</string>
     <string name="ring_chart_title">Статистика использования приложений</string>
     <string name="ring_chart_other">Другие</string>
-    <string name="usage_analysis_section">Анализ использования</string>
-    <string name="time_saved_label">Сэкономлено времени</string>
+    <string name="usage_analysis_section">По приложениям</string>
+    <!-- Плоская констатация в обе стороны. Раньше здесь было «Сэкономлено времени» —
+         показывалось только при спаде, зелёным и с копилкой, то есть приложение хвалило
+         за один исход и молчало про другой. Это ровно та геймификация, которой проект
+         обещает не заниматься. -->
+    <string name="total_change_less">На %1$s меньше, чем в прошлый такой же период</string>
+    <string name="total_change_more">На %1$s больше, чем в прошлый такой же период</string>
+    <string name="total_change_less_yesterday">На %1$s меньше, чем вчера</string>
+    <string name="total_change_more_yesterday">На %1$s больше, чем вчера</string>
 
     <!-- Settings screen -->
     <string name="settings_title">Настройки</string>
