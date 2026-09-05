@@ -33,7 +33,10 @@ internal abstract class ScreenTimeDatabase : RoomDatabase() {
          * by design. Existing rows keep `0`, i.e. "unknown" — the next sync fills in real values
          * for the last week, and older days stay honestly marked as unmeasured.
          */
-        private val MIGRATION_3_4 = object : Migration(3, 4) {
+        // internal rather than private: Migration3To4Test opens a hand-built version 3
+        // database with exactly this migration, which is the only way that path gets
+        // exercised — on a device creker is always installed fresh.
+        internal val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE ${UsageContract.TABLE_DEVICE_USAGE} " +
