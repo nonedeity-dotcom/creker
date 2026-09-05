@@ -54,4 +54,17 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: ./gradlew connectedDebugAndroidTest --tests "com.creker.screentime.data.local.Migration3To4Test"
+          # Not --tests: connectedAndroidTest is not a Test task and rejects it. The class
+          # filter goes to the instrumentation runner instead. Narrowed to this one class so
+          # the run does not also drag in SeedTestDataTest, which exists for the cross-app E2E.
+          script: >-
+            ./gradlew connectedDebugAndroidTest
+            -Pandroid.testInstrumentationRunnerArguments.class=com.creker.screentime.data.local.Migration3To4Test
+
+      - name: Upload the test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-test-report
+          path: app/build/reports/androidTests/connected/**
+          if-no-files-found: ignore
