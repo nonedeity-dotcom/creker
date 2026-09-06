@@ -97,7 +97,7 @@ fun ChartModeToggle(mode: ChartMode, onModeChange: (ChartMode) -> Unit, modifier
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(3.dp),
     ) {
         ChartModeButton(Icons.Rounded.BarChart, selected = mode == ChartMode.Bar) { onModeChange(ChartMode.Bar) }
@@ -136,7 +136,7 @@ fun MetricSelector(selected: ChartMetric, onSelect: (ChartMetric) -> Unit, modif
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {

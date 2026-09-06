@@ -84,10 +84,18 @@ jobs:
       # Room only writes these while compiling, and they are what a MigrationTestHelper
       # test reads. Committed from here because the schema is a fact about the build, not
       # something to remember to regenerate by hand.
+      # Never fatal. Room writes these as a side effect of its annotation processor, so a
+      # cached kspDebugKotlin leaves the directory untouched and there is simply nothing to
+      # publish — which is not a reason to fail an APK build. That is exactly what happened
+      # the first time a run hit a warm build cache.
       - name: Publish Room schemas to the ci-schemas branch
+        continue-on-error: true
         run: |
           set -e
-          if [ ! -d app/schemas ]; then echo "no schemas emitted"; exit 1; fi
+          if [ ! -d app/schemas ]; then
+            echo "::notice::no schemas emitted this run (ksp was probably served from cache) — nothing to publish"
+            exit 0
+          fi
           rm -rf /tmp/schemas-repo && mkdir -p /tmp/schemas-repo
           cp -r app/schemas/. /tmp/schemas-repo/
           cd /tmp/schemas-repo

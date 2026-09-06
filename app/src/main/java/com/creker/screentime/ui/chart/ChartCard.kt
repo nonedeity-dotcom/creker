@@ -79,7 +79,10 @@ fun ChartCard(
             .fillMaxWidth()
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(22.dp)),
         shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surface,
+        // A card, not a patch of background with a hairline round it. On the old palette
+        // surface and background were the same colour, so this "card" was invisible except
+        // for its border.
+        color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Column(
@@ -208,7 +211,7 @@ private fun UsageChangeChip(percent: Int, isDecrease: Boolean, comparedToYesterd
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Icon(
