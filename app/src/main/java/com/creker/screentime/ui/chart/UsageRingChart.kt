@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.ui.theme.MonoNumeric
 
@@ -92,9 +93,22 @@ fun UsageRingChart(slices: List<RingSlice>, totalLabel: String, modifier: Modifi
             }
         }
 
+        // The figure scales with the ring instead of sitting at a fixed size. At 22sp it
+        // was a caption in the middle of a large empty circle — the ring is the biggest
+        // thing on the screen and the number it is about was the smallest. A fixed 40sp
+        // would be the opposite mistake: it runs past the inner edge on a narrow phone,
+        // and a month-long period reaches nine characters ("120:45:00").
+        val centerSize = with(LocalDensity.current) {
+            (ringDiameter.value * 0.135f).coerceIn(20f, 38f).dp.toSp()
+        }
         Text(
             text = totalLabel,
-            style = MaterialTheme.typography.titleLarge.copy(fontFamily = MonoNumeric),
+            style = MaterialTheme.typography.displayMedium.copy(
+                fontFamily = MonoNumeric,
+                fontSize = centerSize,
+                lineHeight = centerSize * 1.15f,
+            ),
+            maxLines = 1,
             color = onSurface,
         )
     }
