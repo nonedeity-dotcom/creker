@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
 import com.creker.screentime.core.DayRange
+import com.creker.screentime.core.DurationFormatter
 import com.creker.screentime.core.UsageComparison
 import com.creker.screentime.ui.chart.ChartCard
 import com.creker.screentime.ui.chart.ChartPoint
@@ -45,12 +46,23 @@ fun UsageOverviewCard(
         onMetricChange = onMetricChange,
         chartPoints = chartPoints,
         modifier = modifier,
-        showHeadlineValue = false,
-        totalUsageMillis = if (appCount > 0) totalMillis else null,
+        // The figure the app exists to show, at the size that says so. It used to be a
+        // small row at the foot of this card, under the chart — the one number you open
+        // the app for, in body text, below a graph of it. The chart is the detail; this
+        // is the answer.
+        //
+        // It is the app-list total rather than the chart's own sum, whatever metric the
+        // chart is plotting: the list of apps directly below adds up to this, and a
+        // headline that disagreed with the rows under it by a rounding step would be
+        // worse than no headline. Empty period, no headline — the "нет данных" panel
+        // below says it better than "00:00:00" would.
+        showHeadlineValue = appCount > 0,
+        headlineText = DurationFormatter.format(totalMillis),
+        headlineLabel = stringResource(R.string.overview_total_label),
+        onHeadlineClick = onOpenTotalTime,
         usageChangePercent = usageChange?.percent,
         usageChangeIsDecrease = usageChange?.isDecrease ?: true,
         usageChangeComparedToYesterday = usageChange?.comparedToYesterday ?: true,
-        onTotalUsageClick = onOpenTotalTime,
         subtitle = {
             // This row now shares its card with the mode toggle beside it (less width
             // than before), and the full localized date ("22 авг. 2026 г.") no longer

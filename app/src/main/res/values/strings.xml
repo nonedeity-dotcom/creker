@@ -66,7 +66,7 @@
     <string name="unit_hours">ч</string>
     <string name="unit_minutes">м</string>
     <string name="unit_seconds">с</string>
-    <string name="total_usage_row_label">Общее использование:</string>
+    <string name="overview_total_label">Общее использование</string>
     <string name="chart_no_data">За этот период нет данных</string>
 
     <!-- Change vs. the previous equally-long period -->

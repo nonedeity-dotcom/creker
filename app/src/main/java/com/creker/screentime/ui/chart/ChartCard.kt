@@ -17,8 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,8 +34,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
-import com.creker.screentime.core.DurationFormatter
-import com.creker.screentime.ui.theme.MonoNumeric
 
 
 /** Keeps the card the same height whether or not the period has any data to plot. */
@@ -58,17 +54,24 @@ fun ChartCard(
     onMetricChange: (ChartMetric) -> Unit,
     chartPoints: List<ChartPoint>,
     modifier: Modifier = Modifier,
-    /** Total app usage over the period, shown as a row at the bottom of this same card. */
-    totalUsageMillis: Long? = null,
     /** False hides the big headline figure, leaving only [subtitle] and the toggle. */
     showHeadlineValue: Boolean = true,
+    /**
+     * The headline figure, already formatted. Defaults to the chart's own sum, which is
+     * what one app's detail screen wants. The overview passes the total its app list adds
+     * up to instead: that list is the body of the screen, and a headline computed from the
+     * chart could disagree with it by a rounding step.
+     */
+    headlineText: String? = null,
+    /** A small caption over the headline, saying what the figure is. */
+    headlineLabel: String? = null,
+    /** Makes the headline tappable — e.g. to open a full per-app breakdown. */
+    onHeadlineClick: (() -> Unit)? = null,
     /** Percent change vs. the previous equally-long period; null hides the chip entirely. */
     usageChangePercent: Int? = null,
     usageChangeIsDecrease: Boolean = true,
     /** True: "чем вчера" wording, for a single-day period. False: "за предыдущий период". */
     usageChangeComparedToYesterday: Boolean = true,
-    /** Makes the total-usage row tappable — e.g. to open a full per-app breakdown. */
-    onTotalUsageClick: (() -> Unit)? = null,
     subtitle: @Composable () -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(ChartMode.Bar) }
@@ -97,11 +100,36 @@ fun ChartCard(
                 ChartModeToggle(mode = mode, onModeChange = { mode = it })
             }
             if (showHeadlineValue) {
-                Text(
-                    text = metric.formatValue(total),
-                    style = MaterialTheme.typography.displayMedium,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+                Column(
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(enabled = onHeadlineClick != null) { onHeadlineClick?.invoke() },
+                ) {
+                    if (headlineLabel != null) {
+                        Text(
+                            text = headlineLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = headlineText ?: metric.formatValue(total),
+                            style = MaterialTheme.typography.displayMedium,
+                        )
+                        if (onHeadlineClick != null) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
+                }
                 if (usageChangePercent != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     UsageChangeChip(
@@ -140,56 +168,6 @@ fun ChartCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                    )
-                }
-            }
-
-            if (totalUsageMillis != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable(enabled = onTotalUsageClick != null) { onTotalUsageClick?.invoke() },
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Visibility,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.total_usage_row_label),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = DurationFormatter.formatWithUnits(totalUsageMillis, units),
-                        style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoNumeric),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (onTotalUsageClick != null) {
-                        Icon(
-                            imageVector = Icons.Rounded.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-
-                if (!showHeadlineValue && usageChangePercent != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    UsageChangeChip(
-                        percent = usageChangePercent,
-                        isDecrease = usageChangeIsDecrease,
-                        comparedToYesterday = usageChangeComparedToYesterday,
                     )
                 }
             }

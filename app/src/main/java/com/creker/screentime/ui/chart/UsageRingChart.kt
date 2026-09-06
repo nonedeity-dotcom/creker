@@ -101,20 +101,22 @@ fun UsageRingChart(slices: List<RingSlice>, totalLabel: String, modifier: Modifi
 }
 
 /**
- * The ring's ramp: the app's own amber, stepping down towards the warm grey of its
- * chrome. Ordered, not assorted — position in this list is position in the ring.
+ * The ring's ramp: the app's amber cooling into rust, brightest first. Ordered, not
+ * assorted — position in this list is position in the ring.
  *
- * It stops well short of the background. A step that faded all the way out would make the
- * smallest slice indistinguishable from the empty track, which reads as missing data
- * rather than as a small number.
+ * It used to step down towards the grey-brown of the old chrome, which on a near-black
+ * ground turned the last two arcs to mud: a slice you can barely separate from the empty
+ * track reads as missing data rather than as a small number. The ramp now loses lightness
+ * without losing colour — every rung is a saturated warm tone, so the ring still says
+ * "the brightest band is the biggest" and the small slices still look like slices.
  */
 private val RingPalette = listOf(
-    Color(0xFFE9A63C),
-    Color(0xFFD69B4A),
-    Color(0xFFBE8C52),
-    Color(0xFFA17A55),
-    Color(0xFF876753),
-    Color(0xFF6B554A),
+    Color(0xFFFFC24A),
+    Color(0xFFFFA22E),
+    Color(0xFFF58320),
+    Color(0xFFE0661F),
+    Color(0xFFC44E25),
+    Color(0xFF9E3C2A),
 )
 
 /** The colour of the nth arc, so a legend row can be painted to match. */
