@@ -70,7 +70,42 @@ class DurationFormatterTest {
     }
 
     @Test
+    fun `every tick of an axis uses the unit its maximum calls for`() {
+        val u = DurationUnits("ч", "м", "с")
+        val halfHour = TimeUnit.MINUTES.toMillis(30)
+
+        // The case that made this exist: 30м / 15м / 0с — three ticks in two units.
+        assertEquals("30м", DurationFormatter.formatAxisTick(halfHour, halfHour, u))
+        assertEquals("15м", DurationFormatter.formatAxisTick(halfHour / 2, halfHour, u))
+        assertEquals("0м", DurationFormatter.formatAxisTick(0L, halfHour, u))
+    }
+
+    @Test
+    fun `an axis in hours labels its middle in hours too, not minutes`() {
+        val u = DurationUnits("ч", "м", "с")
+        val fourHours = TimeUnit.HOURS.toMillis(4)
+
+        assertEquals("4ч", DurationFormatter.formatAxisTick(fourHours, fourHours, u))
+        assertEquals("2ч", DurationFormatter.formatAxisTick(fourHours / 2, fourHours, u))
+        assertEquals("0ч", DurationFormatter.formatAxisTick(0L, fourHours, u))
+        // Rounds down rather than up: a tick reading "1ч" on a bar worth 59 minutes would
+        // put the label above the data.
+        assertEquals("1ч", DurationFormatter.formatAxisTick(TimeUnit.MINUTES.toMillis(119), fourHours, u))
+    }
+
+    @Test
+    fun `an axis smaller than a minute stays in seconds`() {
+        val u = DurationUnits("ч", "м", "с")
+        val fortySeconds = TimeUnit.SECONDS.toMillis(40)
+
+        assertEquals("40с", DurationFormatter.formatAxisTick(fortySeconds, fortySeconds, u))
+        assertEquals("20с", DurationFormatter.formatAxisTick(fortySeconds / 2, fortySeconds, u))
+        assertEquals("0с", DurationFormatter.formatAxisTick(0L, fortySeconds, u))
+    }
+
+    @Test
     fun `treats negative durations as zero`() {
         assertEquals("00:00:00", DurationFormatter.format(-5_000L))
+        assertEquals("0м", DurationFormatter.formatAxisTick(-1L, TimeUnit.MINUTES.toMillis(5), DurationUnits("ч", "м", "с")))
     }
 }

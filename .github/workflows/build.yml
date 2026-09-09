@@ -1,9 +1,10 @@
-name: Build debug APK
+name: Build APK
 
 on:
   push:
     branches:
       - claude/android-screen-time-tracker-4pmx1k
+      - claude/creker-architecture-audit-5ismtl
   workflow_dispatch:
 
 jobs:
@@ -25,6 +26,13 @@ jobs:
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
+
+      # Compiles the instrumentation APK without running it. SeedTestDataTest is what
+      # verifies the provider contract on a device, and nothing else here builds it --
+      # a break in it would otherwise surface only in the cross-app E2E, one repository
+      # and several steps away.
+      - name: Compile instrumented tests
+        run: ./gradlew assembleDebugAndroidTest
 
       - name: Render screenshots
         run: ./gradlew recordPaparazziDebug
@@ -59,9 +67,61 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
+      # Compiled but not shipped. The release build type turns on R8 and resource
+      # shrinking, and had never once been built -- so a rule that strips something Room
+      # or Compose reaches for reflectively would have surfaced on a phone rather than
+      # here. Publishing it is a separate decision: it needs checking on a device first.
+      - name: Build release APK (not published - R8 check)
+        run: ./gradlew assembleRelease
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      # Room only writes these while compiling, and they are what a MigrationTestHelper
+      # test reads. Committed from here because the schema is a fact about the build, not
+      # something to remember to regenerate by hand.
+      # Never fatal. Room writes these as a side effect of its annotation processor, so a
+      # cached kspDebugKotlin leaves the directory untouched and there is simply nothing to
+      # publish — which is not a reason to fail an APK build. That is exactly what happened
+      # the first time a run hit a warm build cache.
+      - name: Publish Room schemas to the ci-schemas branch
+        continue-on-error: true
+        run: |
+          set -e
+          if [ ! -d app/schemas ]; then
+            echo "::notice::no schemas emitted this run (ksp was probably served from cache) — nothing to publish"
+            exit 0
+          fi
+          rm -rf /tmp/schemas-repo && mkdir -p /tmp/schemas-repo
+          cp -r app/schemas/. /tmp/schemas-repo/
+          cd /tmp/schemas-repo
+          git init -q
+          git config user.name "creker-ci"
+          git config user.email "ci@creker.local"
+          git add -A
+          git commit -q -m "Room schemas from ${GITHUB_SHA}"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:ci-schemas
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # The artifact above is a zip behind a GitHub login, which is awkward to
+      # install from a phone. A release carries the .apk itself, so the download
+      # is one tap -- same arrangement the sibling app (no-burnout) already uses.
+      - name: Publish release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: creker-build-${{ github.run_number }}
+          name: Creker APK build ${{ github.run_number }}
+          body: Automated debug APK built from ${{ github.sha }}.
+          files: app/build/outputs/apk/debug/app-debug.apk

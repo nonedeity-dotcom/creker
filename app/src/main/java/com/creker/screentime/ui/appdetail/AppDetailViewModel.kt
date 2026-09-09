@@ -79,22 +79,24 @@ class AppDetailViewModel(
     private fun chartPointsFlow(range: DayRange, metric: ChartMetric): Flow<List<ChartPoint>> {
         val isRecentSingleDay = range.dayCount == 1 &&
             !range.from.isBefore(repository.today().minusDays(UsageRepository.IMPORT_WINDOW_DAYS))
+        // Only today's chart is trimmed; a past day is complete and keeps all 24 hours.
+        val throughHour = if (range.from == repository.today()) repository.nowHour() else null
         val useWeekdayLabels = range.dayCount <= 8
         return when (metric) {
             ChartMetric.USAGE -> if (isRecentSingleDay) {
-                flow { emit(repository.hourlyBreakdownForApp(range.from, packageName).toHourlyChartPoints()) }
+                flow { emit(repository.hourlyBreakdownForApp(range.from, packageName).toHourlyChartPoints(throughHour)) }
             } else {
                 repository.observeAppDailyUsage(packageName, range).map { it.toDailyChartPoints(useWeekdayLabels) }
             }
 
             ChartMetric.SESSIONS -> if (isRecentSingleDay) {
-                flow { emit(repository.hourlySessionsForApp(range.from, packageName).toHourlyChartPoints()) }
+                flow { emit(repository.hourlySessionsForApp(range.from, packageName).toHourlyChartPoints(throughHour)) }
             } else {
                 repository.observeAppDailySessions(packageName, range).map { it.toDailyChartPoints(useWeekdayLabels) }
             }
 
             ChartMetric.SCREEN_TIME -> if (isRecentSingleDay) {
-                flow { emit(repository.hourlyScreenTime(range.from).toHourlyChartPoints()) }
+                flow { emit(repository.hourlyScreenTime(range.from).toHourlyChartPoints(throughHour)) }
             } else {
                 repository.observeDeviceDailyTotals(range).map { it.toDailyChartPoints(useWeekdayLabels) }
             }

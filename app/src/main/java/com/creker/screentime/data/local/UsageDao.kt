@@ -1,14 +1,16 @@
 package com.creker.screentime.data.local
 
+import android.database.Cursor
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.creker.screentime.contract.UsageContract
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-abstract class UsageDao {
+internal abstract class UsageDao {
 
     @Query(
         """
@@ -73,6 +75,25 @@ abstract class UsageDao {
     abstract fun observeAppPeriodTotal(packageName: String, fromDate: String, toDate: String): Flow<AppPeriodTotalRow>
 
     /** Earliest day the database holds, used to explain a still-short history. */
+    /**
+     * Synchronous, cursor-returning per-app rows for [UsageProvider], same shape of query as
+     * [DeviceUsageDao.queryDailyTotalsCursor] and for the same reason.
+     *
+     * Ordered by day and then by time spent, so the reading app gets the list already in the
+     * order it wants to show — biggest first within each day.
+     */
+    @Query(
+        "SELECT " + UsageContract.COLUMN_DATE +
+            ", " + UsageContract.COLUMN_PACKAGE_NAME +
+            ", " + UsageContract.COLUMN_USAGE_MILLIS +
+            ", " + UsageContract.COLUMN_LAUNCH_COUNT +
+            " FROM " + UsageContract.TABLE_APP_USAGE +
+            " WHERE " + UsageContract.COLUMN_DATE + " BETWEEN :fromDate AND :toDate" +
+            " AND " + UsageContract.COLUMN_USAGE_MILLIS + " > 0" +
+            " ORDER BY " + UsageContract.COLUMN_DATE + " ASC, " + UsageContract.COLUMN_USAGE_MILLIS + " DESC"
+    )
+    abstract fun queryAppUsageCursor(fromDate: String, toDate: String): Cursor
+
     @Query("SELECT MIN(date) FROM app_usage")
     abstract fun observeEarliestDate(): Flow<String?>
 
@@ -109,7 +130,7 @@ abstract class UsageDao {
 }
 
 @Dao
-interface SyncStateDao {
+internal interface SyncStateDao {
 
     @Query("SELECT * FROM sync_state WHERE id = 0")
     suspend fun get(): SyncStateEntity?
@@ -119,11 +140,32 @@ interface SyncStateDao {
 }
 
 @Dao
-abstract class DeviceUsageDao {
+internal abstract class DeviceUsageDao {
 
     /** Per-day device-wide screen-on time, for the multi-day chart in screen-time mode. */
     @Query("SELECT date, screen_millis AS usage_millis FROM device_usage WHERE date BETWEEN :fromDate AND :toDate")
     abstract fun observeDailyTotals(fromDate: String, toDate: String): Flow<List<DateTotalRow>>
+
+    /**
+     * Synchronous, cursor-returning variant of [observeDailyTotals] for [UsageProvider] —
+     * `ContentProvider.query()` is a synchronous callback, not a suspend function, and Room
+     * hands back a raw [Cursor] for exactly this case instead of running the query through
+     * coroutines.
+     *
+     * This is the query another app sees, so it is spelled out of [UsageContract] constants
+     * rather than string literals: the cursor's column names cannot drift from the contract
+     * without someone editing the contract file itself. Kotlin folds the concatenation at
+     * compile time, which is what Room's annotation needs.
+     */
+    @Query(
+        "SELECT " + UsageContract.COLUMN_DATE +
+            ", " + UsageContract.COLUMN_SCREEN_MILLIS +
+            ", " + UsageContract.COLUMN_UPDATED_AT +
+            " FROM " + UsageContract.TABLE_DEVICE_USAGE +
+            " WHERE " + UsageContract.COLUMN_DATE + " BETWEEN :fromDate AND :toDate" +
+            " ORDER BY " + UsageContract.COLUMN_DATE + " ASC"
+    )
+    abstract fun queryDailyTotalsCursor(fromDate: String, toDate: String): Cursor
 
     /** Every stored row, for the "save all data" export. */
     @Query("SELECT * FROM device_usage ORDER BY date ASC")

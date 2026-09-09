@@ -66,7 +66,7 @@
     <string name="unit_hours">ч</string>
     <string name="unit_minutes">м</string>
     <string name="unit_seconds">с</string>
-    <string name="total_usage_row_label">Общее использование:</string>
+    <string name="overview_total_label">Общее использование</string>
     <string name="chart_no_data">За этот период нет данных</string>
 
     <!-- Change vs. the previous equally-long period -->
@@ -79,6 +79,31 @@
     <string name="total_time_title">Общее время</string>
     <string name="ring_chart_title">Статистика использования приложений</string>
     <string name="ring_chart_other">Другие</string>
-    <string name="usage_analysis_section">Анализ использования</string>
-    <string name="time_saved_label">Сэкономлено времени</string>
+    <string name="usage_analysis_section">По приложениям</string>
+    <!-- Плоская констатация в обе стороны. Раньше здесь было «Сэкономлено времени» —
+         показывалось только при спаде, зелёным и с копилкой, то есть приложение хвалило
+         за один исход и молчало про другой. Это ровно та геймификация, которой проект
+         обещает не заниматься. -->
+    <string name="total_change_less">На %1$s меньше, чем в прошлый такой же период</string>
+    <string name="total_change_more">На %1$s больше, чем в прошлый такой же период</string>
+    <string name="total_change_less_yesterday">На %1$s меньше, чем вчера</string>
+    <string name="total_change_more_yesterday">На %1$s больше, чем вчера</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_open">Настройки</string>
+    <string name="settings_access_section">Доступ к статистике</string>
+    <string name="settings_access_granted">Доступ есть</string>
+    <string name="settings_access_denied">Доступа нет</string>
+    <string name="settings_access_granted_body">Android отдаёт статистику использования, приложение считает экранное время.</string>
+    <string name="settings_access_denied_body">Без этого доступа система не отдаёт статистику: новые дни не появятся, а уже сохранённые останутся.</string>
+    <string name="settings_access_action">Открыть системные настройки</string>
+    <string name="settings_sharing_section">Данные другим приложениям</string>
+    <string name="settings_sharing_body">Данные получают только приложения с включённым переключателем. Остальным creker не отвечает — для них это выглядит так, будто он не установлен. Ничего не уходит в интернет: обмен идёт внутри телефона.</string>
+    <string name="settings_caller_never">Ещё не запрашивал</string>
+    <string name="settings_caller_last_seen">Последний запрос: %1$s</string>
+    <string name="settings_caller_not_installed">Не установлено на этом телефоне</string>
+    <string name="settings_caller_noburnout_off">«Стержень» перестанет сам отмечать «Экранное время в норме» — отмечать придётся вручную.</string>
+    <string name="settings_backup_section">Резервная копия</string>
+    <string name="settings_backup_body">Вся история пишется в CSV-файл туда, куда укажешь, и читается обратно оттуда же. Пригодится при переезде на другой телефон.</string>
 </resources>

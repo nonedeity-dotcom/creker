@@ -24,10 +24,13 @@ data class TotalTimeUiState(
     val totalMillis: Long = 0L,
     val apps: List<TotalTimeAppUi> = emptyList(),
     /**
-     * How much less was used than the previous equally-long period, when that is a
-     * genuine decrease. Null hides the "time saved" card entirely -- there is nothing
-     * to credit when usage went up, or there is no prior period to compare against.
+     * How this period differs from the previous equally-long one, in both directions.
+     *
+     * Was "savedMillis", which existed only when usage went *down*: the screen congratulated
+     * one outcome and said nothing about the other. A tracker that only speaks up when the
+     * number flatters you is not reporting, it is coaching. Null when there is no prior
+     * period to compare against.
      */
-    val savedMillis: Long? = null,
+    val totalChangeMillis: Long? = null,
     val isInitialLoading: Boolean = true,
 )

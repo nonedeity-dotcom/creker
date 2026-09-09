@@ -82,7 +82,10 @@ class TotalTimeViewModel(
                     canGoForward = !data.range.shiftBy(data.range.dayCount).to.isAfter(today),
                     totalMillis = totalMillis,
                     apps = apps,
-                    savedMillis = (previousTotalMillis - totalMillis).takeIf { it > 0L },
+                    // Signed, and kept whichever way it went. Zero is dropped: "exactly the
+                    // same as last time" is a coincidence, not a finding.
+                    totalChangeMillis = (totalMillis - previousTotalMillis)
+                        .takeIf { previousTotalMillis > 0L && it != 0L },
                     isInitialLoading = false,
                 )
             }

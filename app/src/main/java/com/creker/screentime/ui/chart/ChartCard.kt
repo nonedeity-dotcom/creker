@@ -17,8 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,17 +29,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.R
 import com.creker.screentime.core.ChartMetric
-import com.creker.screentime.core.DurationFormatter
-import com.creker.screentime.ui.theme.MonoNumeric
 
-/** A muted, theme-independent green — the one color in this palette that always reads as "good". */
-private val ImprovedGreen = Color(0xFF5FB86A)
 
 /** Keeps the card the same height whether or not the period has any data to plot. */
 private val EMPTY_CHART_HEIGHT = 96.dp
@@ -61,17 +54,24 @@ fun ChartCard(
     onMetricChange: (ChartMetric) -> Unit,
     chartPoints: List<ChartPoint>,
     modifier: Modifier = Modifier,
-    /** Total app usage over the period, shown as a row at the bottom of this same card. */
-    totalUsageMillis: Long? = null,
     /** False hides the big headline figure, leaving only [subtitle] and the toggle. */
     showHeadlineValue: Boolean = true,
+    /**
+     * The headline figure, already formatted. Defaults to the chart's own sum, which is
+     * what one app's detail screen wants. The overview passes the total its app list adds
+     * up to instead: that list is the body of the screen, and a headline computed from the
+     * chart could disagree with it by a rounding step.
+     */
+    headlineText: String? = null,
+    /** A small caption over the headline, saying what the figure is. */
+    headlineLabel: String? = null,
+    /** Makes the headline tappable — e.g. to open a full per-app breakdown. */
+    onHeadlineClick: (() -> Unit)? = null,
     /** Percent change vs. the previous equally-long period; null hides the chip entirely. */
     usageChangePercent: Int? = null,
     usageChangeIsDecrease: Boolean = true,
     /** True: "чем вчера" wording, for a single-day period. False: "за предыдущий период". */
     usageChangeComparedToYesterday: Boolean = true,
-    /** Makes the total-usage row tappable — e.g. to open a full per-app breakdown. */
-    onTotalUsageClick: (() -> Unit)? = null,
     subtitle: @Composable () -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(ChartMode.Bar) }
@@ -82,7 +82,10 @@ fun ChartCard(
             .fillMaxWidth()
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(22.dp)),
         shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surface,
+        // A card, not a patch of background with a hairline round it. On the old palette
+        // surface and background were the same colour, so this "card" was invisible except
+        // for its border.
+        color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Column(
@@ -97,11 +100,36 @@ fun ChartCard(
                 ChartModeToggle(mode = mode, onModeChange = { mode = it })
             }
             if (showHeadlineValue) {
-                Text(
-                    text = metric.formatValue(total),
-                    style = MaterialTheme.typography.displayMedium,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+                Column(
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(enabled = onHeadlineClick != null) { onHeadlineClick?.invoke() },
+                ) {
+                    if (headlineLabel != null) {
+                        Text(
+                            text = headlineLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = headlineText ?: metric.formatValue(total),
+                            style = MaterialTheme.typography.displayMedium,
+                        )
+                        if (onHeadlineClick != null) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
+                }
                 if (usageChangePercent != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     UsageChangeChip(
@@ -120,6 +148,7 @@ fun ChartCard(
                     mode = mode,
                     // Bars get the short form: "01:34:36" over a bar is unreadable.
                     formatBarLabel = { metric.formatCompact(it, units) },
+                    formatAxisTick = { value, max -> metric.formatAxisTick(value, max, units) },
                     formatTooltip = metric::formatValue,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)),
                 )
@@ -142,68 +171,25 @@ fun ChartCard(
                     )
                 }
             }
-
-            if (totalUsageMillis != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable(enabled = onTotalUsageClick != null) { onTotalUsageClick?.invoke() },
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Visibility,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.total_usage_row_label),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = DurationFormatter.formatWithUnits(totalUsageMillis, units),
-                        style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoNumeric),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (onTotalUsageClick != null) {
-                        Icon(
-                            imageVector = Icons.Rounded.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-
-                if (!showHeadlineValue && usageChangePercent != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    UsageChangeChip(
-                        percent = usageChangePercent,
-                        isDecrease = usageChangeIsDecrease,
-                        comparedToYesterday = usageChangeComparedToYesterday,
-                    )
-                }
-            }
         }
     }
 }
 
+/**
+ * "18% less than yesterday", as a fact rather than a grade.
+ *
+ * It used to be green when the number fell and error-red when it rose — the last place in
+ * the app still handing out verdicts after the "time saved" card and the coloured arrows in
+ * the app list went. The arrow still says which way; nothing says whether that is good.
+ */
 @Composable
 private fun UsageChangeChip(percent: Int, isDecrease: Boolean, comparedToYesterday: Boolean) {
-    val tint = if (isDecrease) ImprovedGreen else MaterialTheme.colorScheme.error
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(tint.copy(alpha = 0.16f))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Icon(

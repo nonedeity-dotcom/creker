@@ -1,33 +1,29 @@
 package com.creker.screentime.ui.chart
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Android
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.creker.screentime.ui.theme.MonoNumeric
-import kotlin.math.cos
-import kotlin.math.sin
 
-/** One slice of the ring chart: an app's share of the period's total, 0f..1f. */
+/**
+ * One slice of the ring: an app's share of the period's total, 0f..1f.
+ *
+ * `icon` is not drawn on the arc any more — it belongs to the legend row that carries the
+ * same colour — but it stays on the slice so the two are built from one list and cannot
+ * fall out of step.
+ */
 data class RingSlice(
     val label: String,
     val icon: ImageBitmap?,
@@ -36,16 +32,22 @@ data class RingSlice(
 
 private val RING_INSET = 22.dp
 private val RING_STROKE = 16.dp
-private val ICON_SIZE = 26.dp
 
 /** Degrees trimmed off each arc so neighbouring slices read as separate bands. */
 private const val SLICE_GAP_DEGREES = 3f
 
 /**
- * A donut chart split into one arc per app, its icon sitting just outside the ring at
- * that arc's midpoint, with the period's total spelled out in the center. Distinct
- * hues per slice, cycling if there are more apps than colors -- the app's own single
- * amber accent can't tell neighbouring slices apart the way this needs to.
+ * A donut split into one arc per app, with the period's total in the middle.
+ *
+ * The arcs run down a single warm ramp, brightest first, rather than through eight
+ * distinct hues. Two reasons. A rainbow carried no meaning here — the colours only said
+ * "different", never "bigger" — and it was the loudest thing on the screen of an app whose
+ * whole point is a calm read of where the day went. A ramp says the one thing the ring is
+ * for without a legend: the brightest band is the biggest.
+ *
+ * The icons used to sit on the arcs, straddling the boundary between two of them, which
+ * made every icon look like it belonged to neither. Identity now lives in the list below
+ * the ring, where each row carries the same colour as its arc.
  *
  * Callers are expected to have already grouped a long tail of tiny slices into one
  * (see TotalTimeScreen): shares are drawn exactly as given, so the arcs only add up
@@ -53,13 +55,12 @@ private const val SLICE_GAP_DEGREES = 3f
  */
 @Composable
 fun UsageRingChart(slices: List<RingSlice>, totalLabel: String, modifier: Modifier = Modifier) {
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val onSurface = MaterialTheme.colorScheme.onSurface
 
     BoxWithConstraints(modifier = modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
         val diameter = minOf(maxWidth, maxHeight)
         val ringDiameter = diameter - RING_INSET * 2
-        val iconRadius = ringDiameter / 2
 
         Canvas(
             modifier = Modifier
@@ -80,7 +81,7 @@ fun UsageRingChart(slices: List<RingSlice>, totalLabel: String, modifier: Modifi
                     // the caller groups those into one "other" slice instead.
                     if (sweep > SLICE_GAP_DEGREES) {
                         drawArc(
-                            color = RingPalette[index % RingPalette.size],
+                            color = ringColor(index),
                             startAngle = startAngle + SLICE_GAP_DEGREES / 2f,
                             sweepAngle = sweep - SLICE_GAP_DEGREES,
                             useCenter = false,
@@ -92,70 +93,45 @@ fun UsageRingChart(slices: List<RingSlice>, totalLabel: String, modifier: Modifi
             }
         }
 
+        // The figure scales with the ring instead of sitting at a fixed size. At 22sp it
+        // was a caption in the middle of a large empty circle — the ring is the biggest
+        // thing on the screen and the number it is about was the smallest. A fixed 40sp
+        // would be the opposite mistake: it runs past the inner edge on a narrow phone,
+        // and a month-long period reaches nine characters ("120:45:00").
+        val centerSize = with(LocalDensity.current) {
+            (ringDiameter.value * 0.135f).coerceIn(20f, 38f).dp.toSp()
+        }
         Text(
             text = totalLabel,
-            style = MaterialTheme.typography.titleLarge.copy(fontFamily = MonoNumeric),
+            style = MaterialTheme.typography.displayMedium.copy(
+                fontFamily = MonoNumeric,
+                fontSize = centerSize,
+                lineHeight = centerSize * 1.15f,
+            ),
+            maxLines = 1,
             color = onSurface,
         )
-
-        // An icon needs roughly its own width of arc to sit in without colliding with
-        // its neighbour's. Anything thinner is left unlabelled rather than stacked.
-        val minShareForIcon = if (iconRadius > 0.dp) {
-            (ICON_SIZE.value * 1.15f) / (2f * Math.PI.toFloat() * iconRadius.value)
-        } else {
-            Float.MAX_VALUE
-        }
-
-        var iconStartAngle = -90f
-        slices.forEach { slice ->
-            val sweep = 360f * slice.share
-            val midAngleDeg = iconStartAngle + sweep / 2f
-            iconStartAngle += sweep
-            if (slice.share < minShareForIcon) return@forEach
-
-            // A plain (non-remember()) computation: remember() inside a loop over a
-            // list whose size can change between recompositions risks misaligning
-            // Compose's slot table, and cos/sin here are cheap enough not to need it.
-            val midAngleRad = Math.toRadians(midAngleDeg.toDouble())
-            val offsetX = iconRadius * cos(midAngleRad).toFloat()
-            val offsetY = iconRadius * sin(midAngleRad).toFloat()
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .offset(x = offsetX, y = offsetY)
-                    .size(ICON_SIZE)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface),
-                contentAlignment = Alignment.Center,
-            ) {
-                val icon = slice.icon
-                if (icon != null) {
-                    Image(
-                        bitmap = icon,
-                        contentDescription = slice.label,
-                        modifier = Modifier.size(22.dp).clip(CircleShape),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.Android,
-                        contentDescription = slice.label,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-            }
-        }
     }
 }
 
+/**
+ * The ring's ramp: the app's amber cooling into rust, brightest first. Ordered, not
+ * assorted — position in this list is position in the ring.
+ *
+ * It used to step down towards the grey-brown of the old chrome, which on a near-black
+ * ground turned the last two arcs to mud: a slice you can barely separate from the empty
+ * track reads as missing data rather than as a small number. The ramp now loses lightness
+ * without losing colour — every rung is a saturated warm tone, so the ring still says
+ * "the brightest band is the biggest" and the small slices still look like slices.
+ */
 private val RingPalette = listOf(
-    Color(0xFFE9A63C),
-    Color(0xFF6FA8DC),
-    Color(0xFF5FB86A),
-    Color(0xFFE9795B),
-    Color(0xFFB07CC6),
-    Color(0xFF4FB0AE),
-    Color(0xFFD4708B),
-    Color(0xFFE0C368),
+    Color(0xFFFFC24A),
+    Color(0xFFFFA22E),
+    Color(0xFFF58320),
+    Color(0xFFE0661F),
+    Color(0xFFC44E25),
+    Color(0xFF9E3C2A),
 )
+
+/** The colour of the nth arc, so a legend row can be painted to match. */
+fun ringColor(index: Int): Color = RingPalette[index % RingPalette.size]
