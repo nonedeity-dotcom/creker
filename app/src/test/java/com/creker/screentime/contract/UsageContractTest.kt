@@ -27,14 +27,23 @@ class UsageContractTest {
     fun `contract values are the ones the other app is built against`() {
         assertEquals("com.creker.screentime.provider", UsageContract.AUTHORITY)
         assertEquals("device_usage", UsageContract.PATH_DEVICE_USAGE)
+        assertEquals("app_usage", UsageContract.PATH_APP_USAGE)
         assertEquals(
             "content://com.creker.screentime.provider/device_usage",
             UsageContract.CONTENT_URI_STRING,
+        )
+        assertEquals(
+            "content://com.creker.screentime.provider/app_usage",
+            UsageContract.CONTENT_URI_APP_USAGE_STRING,
         )
         assertEquals("com.creker.screentime.permission.READ_USAGE", UsageContract.READ_PERMISSION)
         assertEquals("date", UsageContract.COLUMN_DATE)
         assertEquals("screen_millis", UsageContract.COLUMN_SCREEN_MILLIS)
         assertEquals("updated_at", UsageContract.COLUMN_UPDATED_AT)
+        assertEquals("package_name", UsageContract.COLUMN_PACKAGE_NAME)
+        assertEquals("usage_millis", UsageContract.COLUMN_USAGE_MILLIS)
+        assertEquals("launch_count", UsageContract.COLUMN_LAUNCH_COUNT)
+        assertEquals("app_label", UsageContract.COLUMN_APP_LABEL)
         assertEquals("yyyy-MM-dd", UsageContract.DATE_PATTERN)
         assertEquals(0, UsageContract.ARG_FROM_DATE)
         assertEquals(1, UsageContract.ARG_TO_DATE)
@@ -51,10 +60,15 @@ class UsageContractTest {
     }
 
     @Test
-    fun `the exposed table is the only one the contract names`() {
-        // app_usage holds package names — which apps a person uses. It is deliberately not part
-        // of the contract, and the provider exposes no path to it.
+    fun `both exposed tables are named by the contract`() {
+        // app_usage holds package names — which apps a person uses, the most personal thing here.
+        // It used to be deliberately outside the contract, with no path to it at all. It is inside
+        // now because creker is being folded into the app that reads it, and this history has to
+        // cross over before creker is uninstalled. What did not change: the read permission and
+        // creker's own per-caller allow-list still stand in front of both paths, so this widened
+        // what an already-trusted caller sees, not who may ask.
         assertEquals("device_usage", UsageContract.TABLE_DEVICE_USAGE)
+        assertEquals("app_usage", UsageContract.TABLE_APP_USAGE)
     }
 
     @Test

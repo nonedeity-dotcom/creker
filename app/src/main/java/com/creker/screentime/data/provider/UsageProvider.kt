@@ -2,15 +2,18 @@ package com.creker.screentime.data.provider
 
 import android.content.ContentProvider
 import android.content.ContentValues
+import android.content.Context
 import android.content.UriMatcher
 import android.database.Cursor
+import android.database.MatrixCursor
 import android.net.Uri
 import com.creker.screentime.contract.UsageContract
 import com.creker.screentime.data.local.ScreenTimeDatabase
 import com.creker.screentime.data.settings.CallerAccess
 
 /**
- * Read-only window into [device_usage][com.creker.screentime.data.local.DeviceUsageEntity]
+ * Read-only window into [device_usage][com.creker.screentime.data.local.DeviceUsageEntity] and
+ * [app_usage][com.creker.screentime.data.local.AppUsageEntity]
  * for other apps on the same device — this is how a habit/reminder app can ask "how much
  * screen time was there on day X" without creker itself gaining any network permission,
  * notification, or background-launch capability. It only ever answers a query the other
@@ -27,6 +30,13 @@ import com.creker.screentime.data.settings.CallerAccess
  *   epoch millis up to which that day's total is complete — see
  *   [UsageContract.COLUMN_UPDATED_AT]) — one row per day that has data; days with no synced
  *   data are simply absent, same as the Room table.
+ * Query contract for `content://com.creker.screentime.provider/app_usage`: the same range
+ * arguments, returning `date`, `package_name`, `usage_millis`, `launch_count` and `app_label`
+ * — one row per app per day it was used, biggest first within each day. This path is newer
+ * than the other and deliberately so: which apps a person opens was the one thing creker kept
+ * to itself, and it is opened now only because the reading app is being merged into this one
+ * and the history has to cross over first. Same permission, same allow-list, same refusals.
+ *
  * - Answers only apps the user has allowed in creker's settings (see [CallerAccess]); an
  *   app nobody has allowed gets a null cursor, which every caller already has to handle as
  *   "this device has no creker data", so being refused degrades to the same quiet no-op as
@@ -47,7 +57,8 @@ class UsageProvider : ContentProvider() {
         selectionArgs: Array<out String>?,
         sortOrder: String?,
     ): Cursor? {
-        if (MATCHER.match(uri) != DEVICE_USAGE) return null
+        val match = MATCHER.match(uri)
+        if (match != DEVICE_USAGE && match != APP_USAGE) return null
         val context = context ?: return null
         // The binder identity of the caller, which an app cannot forge — unlike anything it
         // could pass in as an argument. Null means the system could not attribute the call to
@@ -62,8 +73,68 @@ class UsageProvider : ContentProvider() {
         val fromDate = selectionArgs?.getOrNull(UsageContract.ARG_FROM_DATE) ?: return null
         val toDate = selectionArgs?.getOrNull(UsageContract.ARG_TO_DATE) ?: return null
 
-        val dao = ScreenTimeDatabase.get(context).deviceUsageDao()
-        return dao.queryDailyTotalsCursor(fromDate, toDate)
+        val db = ScreenTimeDatabase.get(context)
+        return when (match) {
+            DEVICE_USAGE -> db.deviceUsageDao().queryDailyTotalsCursor(fromDate, toDate)
+            else -> withLabels(context, db.usageDao().queryAppUsageCursor(fromDate, toDate))
+        }
+    }
+
+    /**
+     * Adds the human-readable app name to each per-app row.
+     *
+     * The caller cannot work it out for itself: since Android 11 an app sees only the packages
+     * it declared up front, and a screen-time list reading `com.google.android.youtube` is not
+     * something a person can use. creker already holds the permission to see them all, so it is
+     * the one place where the name is cheap.
+     *
+     * Copied into a [MatrixCursor] rather than joined in SQL because the name lives in the
+     * package manager, not in the database. The row count is days × apps — tens, not thousands —
+     * and labels are resolved once per package rather than once per row.
+     */
+    private fun withLabels(context: Context, source: Cursor): Cursor {
+        val out = MatrixCursor(
+            arrayOf(
+                UsageContract.COLUMN_DATE,
+                UsageContract.COLUMN_PACKAGE_NAME,
+                UsageContract.COLUMN_USAGE_MILLIS,
+                UsageContract.COLUMN_LAUNCH_COUNT,
+                UsageContract.COLUMN_APP_LABEL,
+            )
+        )
+        val packageManager = context.packageManager
+        val labels = HashMap<String, String>()
+        source.use { cursor ->
+            val dateIdx = cursor.getColumnIndex(UsageContract.COLUMN_DATE)
+            val packageIdx = cursor.getColumnIndex(UsageContract.COLUMN_PACKAGE_NAME)
+            val millisIdx = cursor.getColumnIndex(UsageContract.COLUMN_USAGE_MILLIS)
+            val launchIdx = cursor.getColumnIndex(UsageContract.COLUMN_LAUNCH_COUNT)
+            if (dateIdx < 0 || packageIdx < 0 || millisIdx < 0 || launchIdx < 0) return out
+            while (cursor.moveToNext()) {
+                val packageName = cursor.getString(packageIdx)
+                val label = labels.getOrPut(packageName) {
+                    runCatching {
+                        packageManager.getApplicationLabel(
+                            packageManager.getApplicationInfo(packageName, 0)
+                        ).toString()
+                    }.getOrNull()?.takeIf { it.isNotBlank() }
+                        // Uninstalled since the usage was recorded, or hidden from us: the
+                        // package name is a worse name than a real one and a better one than
+                        // a blank.
+                        ?: packageName
+                }
+                out.addRow(
+                    arrayOf(
+                        cursor.getString(dateIdx),
+                        packageName,
+                        cursor.getLong(millisIdx),
+                        cursor.getInt(launchIdx),
+                        label,
+                    )
+                )
+            }
+        }
+        return out
     }
 
     /*
@@ -96,8 +167,10 @@ class UsageProvider : ContentProvider() {
         const val READ_PERMISSION: String = UsageContract.READ_PERMISSION
 
         private const val DEVICE_USAGE = 1
+        private const val APP_USAGE = 2
         private val MATCHER = UriMatcher(UriMatcher.NO_MATCH).apply {
             addURI(UsageContract.AUTHORITY, UsageContract.PATH_DEVICE_USAGE, DEVICE_USAGE)
+            addURI(UsageContract.AUTHORITY, UsageContract.PATH_APP_USAGE, APP_USAGE)
         }
     }
 }

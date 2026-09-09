@@ -75,6 +75,25 @@ internal abstract class UsageDao {
     abstract fun observeAppPeriodTotal(packageName: String, fromDate: String, toDate: String): Flow<AppPeriodTotalRow>
 
     /** Earliest day the database holds, used to explain a still-short history. */
+    /**
+     * Synchronous, cursor-returning per-app rows for [UsageProvider], same shape of query as
+     * [DeviceUsageDao.queryDailyTotalsCursor] and for the same reason.
+     *
+     * Ordered by day and then by time spent, so the reading app gets the list already in the
+     * order it wants to show — biggest first within each day.
+     */
+    @Query(
+        "SELECT " + UsageContract.COLUMN_DATE +
+            ", " + UsageContract.COLUMN_PACKAGE_NAME +
+            ", " + UsageContract.COLUMN_USAGE_MILLIS +
+            ", " + UsageContract.COLUMN_LAUNCH_COUNT +
+            " FROM " + UsageContract.TABLE_APP_USAGE +
+            " WHERE " + UsageContract.COLUMN_DATE + " BETWEEN :fromDate AND :toDate" +
+            " AND " + UsageContract.COLUMN_USAGE_MILLIS + " > 0" +
+            " ORDER BY " + UsageContract.COLUMN_DATE + " ASC, " + UsageContract.COLUMN_USAGE_MILLIS + " DESC"
+    )
+    abstract fun queryAppUsageCursor(fromDate: String, toDate: String): Cursor
+
     @Query("SELECT MIN(date) FROM app_usage")
     abstract fun observeEarliestDate(): Flow<String?>
 

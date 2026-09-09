@@ -10,17 +10,22 @@ import com.creker.screentime.contract.UsageContract
  *
  * The system keeps detailed usage events for a handful of days only, so the app
  * mirrors what it reads into this table. Everything the UI shows for longer periods
- * comes from here, and nothing ever leaves the device. This table in particular is
- * never exposed through the provider — which app was used stays inside creker.
+ * comes from here, and nothing ever leaves the device.
+ *
+ * This table used to be the one thing the provider would not show — which app was used stayed
+ * inside creker. It is exposed now, under [UsageContract.PATH_APP_USAGE], because creker is
+ * being folded into the app that reads it and this history has to cross over before creker is
+ * uninstalled. Its names come from [UsageContract] for the same reason [DeviceUsageEntity]'s
+ * do: a column another app identifies by name cannot be renamed here alone.
  */
-@Entity(tableName = "app_usage", primaryKeys = ["package_name", "date"])
+@Entity(tableName = UsageContract.TABLE_APP_USAGE, primaryKeys = [UsageContract.COLUMN_PACKAGE_NAME, UsageContract.COLUMN_DATE])
 internal data class AppUsageEntity(
-    @ColumnInfo(name = "package_name") val packageName: String,
+    @ColumnInfo(name = UsageContract.COLUMN_PACKAGE_NAME) val packageName: String,
     /** Calendar day in the device time zone, ISO `yyyy-MM-dd`. */
-    @ColumnInfo(name = "date") val date: String,
-    @ColumnInfo(name = "usage_millis") val usageMillis: Long,
+    @ColumnInfo(name = UsageContract.COLUMN_DATE) val date: String,
+    @ColumnInfo(name = UsageContract.COLUMN_USAGE_MILLIS) val usageMillis: Long,
     /** Number of times the app was brought to the foreground that day. */
-    @ColumnInfo(name = "launch_count") val launchCount: Int,
+    @ColumnInfo(name = UsageContract.COLUMN_LAUNCH_COUNT) val launchCount: Int,
 )
 
 /**
